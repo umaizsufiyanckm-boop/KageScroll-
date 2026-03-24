@@ -20,14 +20,14 @@
   // FIREBASE CONFIG — Replace with your project credentials
   // ============================================================
   const firebaseConfig = {
-  apiKey: "AIzaSyDV69KQYx62GnifnvmzloTX40VuoDRo9p0",
-  authDomain: "kage-scroll.firebaseapp.com",
-  projectId: "kage-scroll",
-  storageBucket: "kage-scroll.firebasestorage.app",
-  messagingSenderId: "29096130745",
-  appId: "1:29096130745:web:0ec33bde947826d2c48368"
-};
-
+    apiKey: "AIzaSyDV69KQYx62GnifnvmzloTX40VuoDRo9p0",
+    authDomain: "kage-scroll.firebaseapp.com",
+    databaseURL: "https://kage-scroll-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "kage-scroll",
+    storageBucket: "kage-scroll.firebasestorage.app",
+    messagingSenderId: "29096130745",
+    appId: "1:29096130745:web:0ec33bde947826d2c48368"
+  };
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
