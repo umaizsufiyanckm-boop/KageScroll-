@@ -1,0 +1,2274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0a0a0f"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>KageScroll</title>
+
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, addDoc, getDocs, getDoc, doc, updateDoc, arrayUnion, arrayRemove, query, where, orderBy, limit, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+
+  // ============================================================
+  // FIREBASE CONFIG — Replace with your project credentials
+  // ============================================================
+  const firebaseConfig = {
+  apiKey: "AIzaSyDV69KQYx62GnifnvmzloTX40VuoDRo9p0",
+  authDomain: "kage-scroll.firebaseapp.com",
+  projectId: "kage-scroll",
+  storageBucket: "kage-scroll.firebasestorage.app",
+  messagingSenderId: "29096130745",
+  appId: "1:29096130745:web:0ec33bde947826d2c48368"
+};
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  let messaging = null;
+  try { messaging = getMessaging(app); } catch(e) {}
+
+  // ── Expose to global ──────────────────────────────────────────
+  window._fb = { app, auth, db, storage, messaging,
+    GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword,
+    createUserWithEmailAndPassword, signInWithPhoneNumber, RecaptchaVerifier,
+    onAuthStateChanged, signOut, updateProfile,
+    collection, addDoc, getDocs, getDoc, doc, updateDoc,
+    arrayUnion, arrayRemove, query, where, orderBy, limit,
+    onSnapshot, serverTimestamp, increment,
+    ref, uploadBytesResumable, getDownloadURL,
+    getToken, onMessage
+  };
+  window._fbReady = true;
+  document.dispatchEvent(new Event('fbReady'));
+</script>
+
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS & RESET
+═══════════════════════════════════════════════ */
+:root {
+  --red: #ff3b30;
+  --blue: #007aff;
+  --red-dim: rgba(255,59,48,0.15);
+  --blue-dim: rgba(0,122,255,0.15);
+
+  /* Dark theme (default) */
+  --bg: #0a0a0f;
+  --bg2: #111118;
+  --bg3: #1a1a24;
+  --surface: rgba(255,255,255,0.06);
+  --surface-hover: rgba(255,255,255,0.10);
+  --border: rgba(255,255,255,0.08);
+  --text: #f5f5f7;
+  --text2: rgba(245,245,247,0.6);
+  --text3: rgba(245,245,247,0.35);
+  --glass: rgba(15,15,22,0.72);
+  --glass-border: rgba(255,255,255,0.10);
+  --shadow: 0 8px 32px rgba(0,0,0,0.45);
+  --radius-sm: 12px;
+  --radius: 18px;
+  --radius-lg: 24px;
+  --nav-h: 64px;
+  --header-h: 56px;
+  --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+[data-theme="light"] {
+  --bg: #f2f2f7;
+  --bg2: #ffffff;
+  --bg3: #e5e5ea;
+  --surface: rgba(0,0,0,0.04);
+  --surface-hover: rgba(0,0,0,0.08);
+  --border: rgba(0,0,0,0.08);
+  --text: #1c1c1e;
+  --text2: rgba(28,28,30,0.6);
+  --text3: rgba(28,28,30,0.35);
+  --glass: rgba(242,242,247,0.82);
+  --glass-border: rgba(0,0,0,0.08);
+  --shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  transition: background 0.3s, color 0.3s;
+}
+
+img, video { display: block; width: 100%; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 0; height: 0; }
+
+/* ── Selection ── */
+::selection { background: var(--blue-dim); color: var(--text); }
+
+/* ═══════════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════════ */
+.hidden { display: none !important; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+.w-full { width: 100%; }
+.relative { position: relative; }
+.absolute { position: absolute; }
+.overflow-hidden { overflow: hidden; }
+.text-center { text-align: center; }
+.pointer { cursor: pointer; }
+.no-select { user-select: none; }
+
+/* ── Glassmorphism Card ── */
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 12px 20px;
+  border: none; outline: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.96); opacity: 0.85; }
+
+.btn-primary {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(255,59,48,0.35);
+}
+.btn-primary:hover { box-shadow: 0 6px 28px rgba(255,59,48,0.5); }
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-blue {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(0,122,255,0.35);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+
+.btn-icon {
+  width: 42px; height: 42px; padding: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s, transform 0.15s;
+}
+.btn-icon:active { transform: scale(0.92); }
+.btn-icon:hover { background: var(--surface-hover); }
+
+/* ── Inputs ── */
+.input {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.input:focus {
+  border-color: var(--blue);
+  background: var(--surface-hover);
+}
+.input::placeholder { color: var(--text3); }
+
+/* ── Badge ── */
+.badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-blue { background: var(--blue-dim); color: var(--blue); }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  color: var(--text);
+  padding: 10px 20px;
+  border-radius: 100px;
+  font-size: 13px; font-weight: 500;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  white-space: nowrap;
+  max-width: calc(100vw - 40px);
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Loader ── */
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.page-loader {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+  z-index: 10000;
+}
+
+/* ═══════════════════════════════════════════════
+   SPLASH / AUTH SCREEN
+═══════════════════════════════════════════════ */
+#auth-screen {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 32px 24px;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.auth-logo {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--red), #ff6b6b);
+  border-radius: 22px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 32px rgba(255,59,48,0.4);
+}
+
+.auth-title {
+  font-size: 32px; font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.auth-subtitle {
+  font-size: 15px; color: var(--text2);
+  margin-bottom: 36px;
+  text-align: center;
+}
+
+.auth-card {
+  width: 100%; max-width: 380px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+}
+
+.auth-tabs {
+  display: flex;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin-bottom: 24px;
+}
+.auth-tab {
+  flex: 1; padding: 9px;
+  border-radius: 9px;
+  border: none; background: transparent;
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.auth-tab.active {
+  background: var(--bg2);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.auth-form { display: flex; flex-direction: column; gap: 12px; }
+.auth-form label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: -4px; }
+
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 16px 0;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1;
+  height: 1px; background: var(--border);
+}
+.divider span { font-size: 12px; color: var(--text3); font-weight: 500; }
+
+.btn-google {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════════ */
+#app {
+  display: none;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+#app.active { display: flex; }
+
+/* ── Top Header ── */
+#top-header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: var(--glass);
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+  z-index: 100;
+}
+
+.header-logo {
+  font-size: 20px; font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.header-logo span { color: var(--red); }
+
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ── Main Content ── */
+#main-content {
+  flex: 1;
+  padding-top: var(--header-h);
+  padding-bottom: calc(var(--nav-h) + 8px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Bottom Navigation ── */
+#bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  background: var(--glass);
+  border-top: 1px solid var(--glass-border);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  z-index: 100;
+}
+
+.nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: none; background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  transition: color 0.2s, transform 0.15s;
+  font-family: var(--font);
+  font-size: 10px; font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+.nav-item:active { transform: scale(0.88); }
+
+.nav-item.active { color: var(--red); }
+.nav-item.active svg { filter: drop-shadow(0 0 6px var(--red)); }
+
+.nav-item svg { width: 22px; height: 22px; transition: transform 0.2s; }
+
+.nav-upload-btn {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, var(--red), #ff6b6b);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(255,59,48,0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.nav-item:active .nav-upload-btn { transform: scale(0.9); }
+
+/* ═══════════════════════════════════════════════
+   PAGES
+═══════════════════════════════════════════════ */
+.page { display: none; animation: fadeUp 0.3s ease; }
+.page.active { display: block; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Category Chips ── */
+.chips-wrap {
+  display: flex; gap: 8px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.chip {
+  padding: 7px 16px;
+  border-radius: 100px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.chip.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(255,59,48,0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   MASONRY GRID
+═══════════════════════════════════════════════ */
+.masonry {
+  columns: 2;
+  column-gap: 10px;
+  padding: 10px;
+}
+@media (min-width: 500px) { .masonry { columns: 3; } }
+@media (min-width: 720px) { .masonry { columns: 4; } }
+
+.pin-card {
+  break-inside: avoid;
+  margin-bottom: 10px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+  animation: fadeIn 0.4s ease;
+}
+.pin-card:active { transform: scale(0.97); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.pin-card img {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--bg3);
+  min-height: 120px;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+.pin-card:hover img { transform: scale(1.03); }
+
+.pin-card-body {
+  padding: 10px;
+}
+.pin-card-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 4px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.pin-card-meta {
+  font-size: 11px; color: var(--text3);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.pin-card-overlay {
+  position: absolute; top: 8px; right: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.pin-card:hover .pin-card-overlay { opacity: 1; }
+
+.pin-action-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+.pin-action-btn:active { transform: scale(0.88); }
+.pin-action-btn.liked { background: var(--red); }
+.pin-action-btn.saved { background: var(--blue); }
+
+/* ── Like count float ── */
+.like-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; color: var(--text3);
+}
+
+/* ═══════════════════════════════════════════════
+   PIN DETAIL MODAL
+═══════════════════════════════════════════════ */
+#pin-modal {
+  position: fixed; inset: 0;
+  z-index: 500;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+#pin-modal.open {
+  opacity: 1; pointer-events: all;
+}
+.pin-modal-sheet {
+  width: 100%;
+  max-height: 92dvh;
+  background: var(--bg2);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transform: translateY(30px);
+  transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
+}
+#pin-modal.open .pin-modal-sheet { transform: translateY(0); }
+
+.pin-modal-drag {
+  width: 36px; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 12px auto 0;
+}
+
+.pin-modal-img {
+  width: 100%;
+  max-height: 60vw;
+  object-fit: cover;
+  background: var(--bg3);
+}
+
+.pin-modal-body { padding: 20px; }
+.pin-modal-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.pin-modal-desc { font-size: 14px; color: var(--text2); line-height: 1.6; margin-bottom: 16px; }
+.pin-modal-actions { display: flex; gap: 10px; margin-bottom: 16px; }
+.pin-modal-author {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--bg3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700;
+  color: var(--text);
+  overflow: hidden; flex-shrink: 0;
+  border: 2px solid var(--border);
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ── Categories ── */
+.pin-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+
+/* ═══════════════════════════════════════════════
+   SEARCH PAGE
+═══════════════════════════════════════════════ */
+.search-header {
+  padding: 12px 16px;
+  position: sticky; top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+.search-bar {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 10px 16px;
+  transition: border-color 0.2s;
+}
+.search-bar:focus-within { border-color: var(--blue); }
+.search-bar input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--font);
+  font-size: 15px;
+}
+.search-bar input::placeholder { color: var(--text3); }
+
+.category-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; padding: 0 16px 16px;
+}
+.category-card {
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative; overflow: hidden;
+  min-height: 90px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.category-card:active { transform: scale(0.97); }
+.category-card-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0.35;
+  filter: saturate(1.2);
+}
+.category-card-label {
+  font-size: 15px; font-weight: 700;
+  position: relative; z-index: 1;
+}
+.category-card-count {
+  font-size: 11px; color: var(--text2);
+  position: relative; z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════
+   UPLOAD PAGE
+═══════════════════════════════════════════════ */
+.upload-page { padding: 16px; }
+.upload-page h2 { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
+
+.upload-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.upload-drop.drag-over {
+  border-color: var(--blue);
+  background: var(--blue-dim);
+}
+.upload-drop input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+}
+.upload-drop-icon {
+  width: 56px; height: 56px;
+  background: var(--surface);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
+}
+.upload-drop p { font-size: 14px; color: var(--text2); }
+.upload-drop p strong { color: var(--text); }
+
+.upload-preview {
+  width: 100%; max-height: 280px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  background: var(--bg3);
+}
+.upload-video-preview {
+  width: 100%; max-height: 280px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  background: #000;
+}
+
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block; font-size: 12px; font-weight: 600;
+  color: var(--text2); margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+.select-input {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.progress-bar {
+  height: 4px;
+  background: var(--surface);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--blue), var(--red));
+  border-radius: 2px;
+  transition: width 0.2s;
+}
+
+/* ═══════════════════════════════════════════════
+   REELS PAGE
+═══════════════════════════════════════════════ */
+#reels-page {
+  height: calc(100dvh - var(--header-h) - var(--nav-h));
+  overflow: hidden; position: relative;
+}
+.reels-container {
+  height: 100%;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.reel-item {
+  height: calc(100dvh - var(--header-h) - var(--nav-h));
+  scroll-snap-align: start;
+  position: relative; overflow: hidden;
+  background: #000;
+}
+.reel-video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.reel-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 20px;
+}
+.reel-actions {
+  position: absolute; right: 16px; bottom: 100px;
+  display: flex; flex-direction: column; gap: 20px; align-items: center;
+}
+.reel-action-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: none; border: none; color: #fff; cursor: pointer;
+  font-family: var(--font); font-size: 12px; font-weight: 600;
+}
+.reel-action-btn svg { width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+
+.reel-info { flex: 1; }
+.reel-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.reel-author { font-size: 13px; color: rgba(255,255,255,0.75); }
+
+/* ── Empty state for reels ── */
+.reels-empty {
+  height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; color: var(--text2);
+}
+.reels-empty svg { width: 60px; height: 60px; opacity: 0.4; }
+
+/* ═══════════════════════════════════════════════
+   PROFILE PAGE
+═══════════════════════════════════════════════ */
+.profile-header {
+  padding: 24px 16px 0;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+.profile-avatar {
+  width: 86px; height: 86px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 3px solid var(--red);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; font-weight: 800;
+  margin-bottom: 12px;
+  position: relative;
+  cursor: pointer;
+}
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-edit-badge {
+  position: absolute; bottom: 0; right: 0;
+  width: 26px; height: 26px;
+  background: var(--blue);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg2);
+}
+.profile-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.profile-email { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+
+.profile-stats {
+  display: flex; gap: 32px; justify-content: center;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 0 16px;
+}
+.stat-item { text-align: center; }
+.stat-num { font-size: 22px; font-weight: 800; }
+.stat-label { font-size: 11px; color: var(--text2); font-weight: 500; margin-top: 2px; }
+
+.profile-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  margin-top: 16px;
+}
+.profile-tab {
+  flex: 1; padding: 12px 0;
+  background: none; border: none;
+  color: var(--text2);
+  font-family: var(--font); font-size: 13px; font-weight: 600;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.profile-tab.active { color: var(--red); border-bottom-color: var(--red); }
+
+/* ═══════════════════════════════════════════════
+   SETTINGS MODAL
+═══════════════════════════════════════════════ */
+#settings-modal {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+#settings-modal.open { opacity: 1; pointer-events: all; }
+
+.settings-sheet {
+  width: 100%;
+  background: var(--bg2);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
+  transform: translateY(20px);
+  transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
+}
+#settings-modal.open .settings-sheet { transform: translateY(0); }
+
+.settings-sheet h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+
+.settings-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settings-item:last-child { border-bottom: none; }
+.settings-item-label { font-size: 15px; font-weight: 500; }
+.settings-item-desc { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* Toggle switch */
+.toggle {
+  width: 50px; height: 28px;
+  background: var(--border);
+  border-radius: 100px;
+  position: relative; cursor: pointer;
+  transition: background 0.25s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--blue); }
+.toggle::after {
+  content: '';
+  position: absolute; top: 3px; left: 3px;
+  width: 22px; height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  transition: transform 0.25s cubic-bezier(0.34,1.4,0.64,1);
+}
+.toggle.on::after { transform: translateX(22px); }
+
+/* ═══════════════════════════════════════════════
+   SECTION HEADERS
+═══════════════════════════════════════════════ */
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 4px;
+}
+.section-title { font-size: 18px; font-weight: 700; }
+.section-see-all { font-size: 13px; color: var(--blue); font-weight: 600; cursor: pointer; }
+
+/* ═══════════════════════════════════════════════
+   SKELETON LOADER
+═══════════════════════════════════════════════ */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-card {
+  break-inside: avoid;
+  margin-bottom: 10px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.skeleton-img { height: 160px; }
+.skeleton-text { height: 12px; margin: 10px; border-radius: 6px; }
+.skeleton-text.short { width: 60%; }
+
+/* ═══════════════════════════════════════════════
+   NOTIFICATION BADGE
+═══════════════════════════════════════════════ */
+.notif-dot {
+  position: absolute; top: 4px; right: 4px;
+  width: 8px; height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+}
+
+/* ═══════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════ */
+@keyframes heartBeat {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.35); }
+  60% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.heart-anim { animation: heartBeat 0.4s ease; }
+
+/* ═══════════════════════════════════════════════
+   FLOATING LABEL INPUT
+═══════════════════════════════════════════════ */
+.float-label-wrap { position: relative; }
+.float-label-wrap .input { padding-top: 20px; padding-bottom: 8px; }
+.float-label {
+  position: absolute; left: 16px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 15px; color: var(--text3);
+  pointer-events: none;
+  transition: all 0.2s;
+}
+.float-label-wrap .input:focus ~ .float-label,
+.float-label-wrap .input:not(:placeholder-shown) ~ .float-label {
+  top: 8px; transform: none;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+  color: var(--blue);
+}
+
+/* ── Pill badge on nav ── */
+.nav-badge {
+  position: absolute; top: 3px; right: calc(50% - 16px);
+  min-width: 16px; height: 16px;
+  background: var(--red);
+  border-radius: 8px;
+  font-size: 9px; font-weight: 700;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+  pointer-events: none;
+}
+
+/* ── Pull to refresh indicator ── */
+.ptr-indicator {
+  display: flex; align-items: center; justify-content: center;
+  height: 0; overflow: hidden;
+  transition: height 0.2s;
+  color: var(--text2); font-size: 13px; gap: 8px;
+}
+
+/* ── Textarea ── */
+textarea.input {
+  resize: none; min-height: 90px;
+  line-height: 1.5;
+}
+
+/* ── Divider ── */
+.hr { height: 1px; background: var(--border); margin: 12px 0; }
+
+</style>
+</head>
+<body data-theme="dark">
+
+<!-- ════ PAGE LOADER ════ -->
+<div id="page-loader" class="page-loader">
+  <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+    <rect width="60" height="60" rx="18" fill="#ff3b30"/>
+    <path d="M18 40 L30 20 L42 40" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="30" cy="36" r="3" fill="white"/>
+  </svg>
+  <div class="spinner"></div>
+</div>
+
+<!-- ════ AUTH SCREEN ════ -->
+<div id="auth-screen" class="hidden">
+  <div class="auth-logo">
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+      <path d="M10 30 L20 10 L30 30" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <circle cx="20" cy="26" r="2.5" fill="white"/>
+    </svg>
+  </div>
+  <h1 class="auth-title">Kage<span style="color:var(--red)">Scroll</span></h1>
+  <p class="auth-subtitle">Discover. Save. Create.</p>
+
+  <div class="auth-card">
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
+      <button class="auth-tab" onclick="switchAuthTab('phone')">Phone</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="auth-login" class="auth-form">
+      <div class="float-label-wrap">
+        <input class="input" type="email" id="login-email" placeholder=" " autocomplete="email"/>
+        <span class="float-label">Email</span>
+      </div>
+      <div class="float-label-wrap">
+        <input class="input" type="password" id="login-pass" placeholder=" " autocomplete="current-password"/>
+        <span class="float-label">Password</span>
+      </div>
+      <button class="btn btn-primary w-full" onclick="emailLogin()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10,17 15,12 10,7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Login
+      </button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="auth-register" class="auth-form hidden">
+      <div class="float-label-wrap">
+        <input class="input" type="text" id="reg-name" placeholder=" " autocomplete="name"/>
+        <span class="float-label">Display Name</span>
+      </div>
+      <div class="float-label-wrap">
+        <input class="input" type="email" id="reg-email" placeholder=" " autocomplete="email"/>
+        <span class="float-label">Email</span>
+      </div>
+      <div class="float-label-wrap">
+        <input class="input" type="password" id="reg-pass" placeholder=" " autocomplete="new-password"/>
+        <span class="float-label">Password</span>
+      </div>
+      <button class="btn btn-primary w-full" onclick="emailRegister()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Create Account
+      </button>
+    </div>
+
+    <!-- Phone Form -->
+    <div id="auth-phone" class="auth-form hidden">
+      <div id="recaptcha-container"></div>
+      <div class="float-label-wrap">
+        <input class="input" type="tel" id="phone-num" placeholder=" " autocomplete="tel"/>
+        <span class="float-label">+1 Phone Number</span>
+      </div>
+      <button class="btn btn-primary w-full" onclick="sendOTP()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.1 4.1 19.79 19.79 0 011.03 4 2 2 0 013 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        Send OTP
+      </button>
+      <div id="otp-section" class="hidden auth-form">
+        <div class="float-label-wrap">
+          <input class="input" type="number" id="otp-code" placeholder=" " inputmode="numeric"/>
+          <span class="float-label">6-digit OTP</span>
+        </div>
+        <button class="btn btn-blue w-full" onclick="verifyOTP()">Verify OTP</button>
+      </div>
+    </div>
+
+    <!-- Divider + Google -->
+    <div class="divider"><span>or</span></div>
+    <button class="btn btn-google w-full" onclick="googleLogin()">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Continue with Google
+    </button>
+  </div>
+</div>
+
+<!-- ════ APP SHELL ════ -->
+<div id="app">
+  <!-- Top Header -->
+  <header id="top-header">
+    <div class="header-logo">Kage<span>Scroll</span></div>
+    <div class="header-actions">
+      <button class="btn-icon" id="notif-btn" onclick="showToast('Notifications coming soon')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      </button>
+      <button class="btn-icon" onclick="openSettings()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content">
+
+    <!-- ── HOME PAGE ── -->
+    <section id="page-home" class="page active">
+      <div class="chips-wrap" id="category-chips"></div>
+      <div id="home-recommended" class="hidden">
+        <div class="section-header">
+          <span class="section-title">For You</span>
+        </div>
+        <div class="masonry" id="recommended-grid"></div>
+      </div>
+      <div class="section-header">
+        <span class="section-title">Discover</span>
+      </div>
+      <div class="masonry" id="home-grid"></div>
+    </section>
+
+    <!-- ── SEARCH PAGE ── -->
+    <section id="page-search" class="page">
+      <div class="search-header">
+        <div class="search-bar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" id="search-input" placeholder="Search pins, topics..." oninput="handleSearch(this.value)"/>
+          <button class="btn-icon" style="width:28px;height:28px;" onclick="clearSearch()" id="search-clear" style="display:none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="search-results-wrap" class="hidden">
+        <div class="masonry" id="search-grid"></div>
+      </div>
+      <div id="category-browse">
+        <p style="padding:4px 16px 12px;font-size:13px;color:var(--text2);font-weight:500;">Browse Categories</p>
+        <div class="category-grid" id="category-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── UPLOAD PAGE ── -->
+    <section id="page-upload" class="page">
+      <div class="upload-page">
+        <h2>New Pin</h2>
+
+        <!-- Type toggle -->
+        <div class="auth-tabs" style="margin-bottom:16px;">
+          <button class="auth-tab active" onclick="switchUploadType('image')">Image</button>
+          <button class="auth-tab" onclick="switchUploadType('video')">Video</button>
+        </div>
+
+        <!-- Drop zone -->
+        <div class="upload-drop" id="upload-drop" onclick="document.getElementById('file-input').click()">
+          <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(this)"/>
+          <div class="upload-drop-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+          </div>
+          <p><strong>Tap to upload</strong></p>
+          <p style="font-size:12px;margin-top:4px;">PNG, JPG, MP4 · Max 20MB</p>
+        </div>
+
+        <img id="upload-preview" class="upload-preview hidden" alt="preview"/>
+        <video id="upload-video-preview" class="upload-video-preview hidden" controls playsinline></video>
+
+        <div class="form-group">
+          <label class="form-label">Title *</label>
+          <input class="input" type="text" id="pin-title" placeholder="Give your pin a title"/>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="input" id="pin-desc" placeholder="Tell the story behind this pin…"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="select-input" id="pin-category">
+            <option value="anime">Anime</option>
+            <option value="art">Art</option>
+            <option value="tech">Tech</option>
+            <option value="nature">Nature</option>
+            <option value="photography">Photography</option>
+            <option value="fashion">Fashion</option>
+            <option value="food">Food</option>
+            <option value="travel">Travel</option>
+            <option value="music">Music</option>
+            <option value="gaming">Gaming</option>
+          </select>
+        </div>
+
+        <div id="upload-progress-wrap" class="hidden">
+          <div class="progress-bar"><div class="progress-fill" id="upload-progress-fill"></div></div>
+          <p style="font-size:12px;color:var(--text2);margin-top:6px;" id="upload-progress-text">Uploading...</p>
+        </div>
+
+        <button class="btn btn-primary w-full" style="margin-top:8px;" id="upload-btn" onclick="uploadPin()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
+          Upload Pin
+        </button>
+      </div>
+    </section>
+
+    <!-- ── REELS PAGE ── -->
+    <section id="page-reels" class="page" style="padding:0;">
+      <div id="reels-page">
+        <div class="reels-container" id="reels-container"></div>
+      </div>
+    </section>
+
+    <!-- ── PROFILE PAGE ── -->
+    <section id="page-profile" class="page">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profile-avatar-wrap" onclick="changeAvatar()">
+          <span id="profile-avatar-text">?</span>
+          <img id="profile-avatar-img" src="" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;"/>
+          <div class="avatar-edit-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          </div>
+        </div>
+        <div class="profile-name" id="profile-name-display">—</div>
+        <div class="profile-email" id="profile-email-display">—</div>
+        <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this)"/>
+      </div>
+
+      <div class="profile-stats">
+        <div class="stat-item">
+          <div class="stat-num" id="stat-pins">0</div>
+          <div class="stat-label">Pins</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="stat-saved">0</div>
+          <div class="stat-label">Saved</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="stat-likes">0</div>
+          <div class="stat-label">Likes</div>
+        </div>
+      </div>
+
+      <div class="profile-tabs">
+        <button class="profile-tab active" onclick="switchProfileTab('mine')">My Pins</button>
+        <button class="profile-tab" onclick="switchProfileTab('saved')">Saved</button>
+      </div>
+
+      <div class="masonry" style="margin-top:12px;" id="profile-grid"></div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" data-tab="home" onclick="switchTab('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-item" data-tab="search" onclick="switchTab('search')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>Search</span>
+    </button>
+    <button class="nav-item" data-tab="upload" onclick="switchTab('upload')">
+      <div class="nav-upload-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <span>Create</span>
+    </button>
+    <button class="nav-item" data-tab="reels" onclick="switchTab('reels')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+      <span>Reels</span>
+    </button>
+    <button class="nav-item" data-tab="profile" onclick="switchTab('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ════ PIN DETAIL MODAL ════ -->
+<div id="pin-modal">
+  <div class="pin-modal-sheet">
+    <div class="pin-modal-drag"></div>
+    <img id="pin-modal-img" class="pin-modal-img" src="" alt="" loading="lazy"/>
+    <video id="pin-modal-video" class="pin-modal-img hidden" controls playsinline></video>
+    <div class="pin-modal-body">
+      <h2 class="pin-modal-title" id="pin-modal-title"></h2>
+      <p class="pin-modal-desc" id="pin-modal-desc"></p>
+      <div class="pin-modal-actions">
+        <button class="btn btn-primary flex-1" id="pin-modal-save-btn" onclick="savePinFromModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+          Save
+        </button>
+        <button class="btn btn-secondary flex-1" id="pin-modal-like-btn" onclick="likePinFromModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          <span id="pin-modal-likes">0</span>
+        </button>
+        <button class="btn-icon" onclick="closePinModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="pin-modal-author" id="pin-modal-author"></div>
+      <div class="pin-tags" id="pin-modal-tags"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SETTINGS MODAL ════ -->
+<div id="settings-modal">
+  <div class="settings-sheet">
+    <h3>Settings</h3>
+    <div class="settings-item">
+      <div>
+        <div class="settings-item-label">Dark Mode</div>
+        <div class="settings-item-desc">Switch between light and dark theme</div>
+      </div>
+      <div class="toggle on" id="theme-toggle" onclick="toggleTheme()"></div>
+    </div>
+    <div class="settings-item">
+      <div>
+        <div class="settings-item-label">Notifications</div>
+        <div class="settings-item-desc">Push notifications for activity</div>
+      </div>
+      <div class="toggle" id="notif-toggle" onclick="toggleNotif(this)"></div>
+    </div>
+    <div class="hr"></div>
+    <div class="settings-item" style="border:none;">
+      <div>
+        <div class="settings-item-label">Account</div>
+        <div class="settings-item-desc" id="settings-email-display">—</div>
+      </div>
+    </div>
+    <button class="btn btn-ghost w-full" style="margin-top:8px;color:var(--red);border-color:var(--red);" onclick="logout()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sign Out
+    </button>
+  </div>
+</div>
+
+<!-- ════ TOAST ════ -->
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   APP STATE
+═══════════════════════════════════════════════ */
+const State = {
+  user: null,
+  currentTab: 'home',
+  currentCategory: 'all',
+  pins: [],
+  reels: [],
+  savedPins: [],
+  likedPins: [],
+  viewHistory: [],
+  currentPinId: null,
+  uploadType: 'image',
+  uploadFile: null,
+  profileTab: 'mine',
+  searchTimeout: null,
+  recaptchaVerifier: null,
+  confirmationResult: null,
+};
+
+const CATEGORIES = ['all','anime','art','tech','nature','photography','fashion','food','travel','music','gaming'];
+const CAT_COLORS = {
+  anime:'#ff3b30', art:'#ff9f0a', tech:'#007aff', nature:'#34c759',
+  photography:'#5e5ce6', fashion:'#ff375f', food:'#ff9f0a',
+  travel:'#30b0c7', music:'#bf5af2', gaming:'#ff6b35'
+};
+
+/* Demo pins for initial content (fallback when Firebase not configured) */
+const DEMO_PINS = [
+  { id:'d1', title:'Neon City Nights', desc:'A cyberpunk cityscape glowing under neon lights.', category:'art', url:'https://picsum.photos/seed/neon1/400/560', type:'image', likes:142, author:'ShadowArtist', authorId:'demo1', tags:['art','neon','city'] },
+  { id:'d2', title:'Anime Warrior', desc:'Epic warrior standing atop the ruins.', category:'anime', url:'https://picsum.photos/seed/anime1/400/480', type:'image', likes:89, author:'AnimeKageX', authorId:'demo2', tags:['anime','warrior'] },
+  { id:'d3', title:'Mountain Sunrise', desc:'Golden hour over misty mountains.', category:'nature', url:'https://picsum.photos/seed/mount1/400/600', type:'image', likes:233, author:'NatureLens', authorId:'demo3', tags:['nature','sunrise'] },
+  { id:'d4', title:'Tech Abstract', desc:'Visualizing data in a beautiful way.', category:'tech', url:'https://picsum.photos/seed/tech1/400/400', type:'image', likes:67, author:'DevArtist', authorId:'demo4', tags:['tech','abstract'] },
+  { id:'d5', title:'Street Fashion', desc:'Urban style meets avant-garde.', category:'fashion', url:'https://picsum.photos/seed/fash1/400/520', type:'image', likes:312, author:'StyleKing', authorId:'demo5', tags:['fashion','urban'] },
+  { id:'d6', title:'Ramen Bowl', desc:'Perfect bowl of tonkotsu ramen.', category:'food', url:'https://picsum.photos/seed/food1/400/440', type:'image', likes:198, author:'FoodieVibes', authorId:'demo6', tags:['food','ramen'] },
+  { id:'d7', title:'Tokyo Streets', desc:'Rainy evening in Shibuya crossing.', category:'travel', url:'https://picsum.photos/seed/tok1/400/580', type:'image', likes:445, author:'WanderlustX', authorId:'demo7', tags:['travel','tokyo'] },
+  { id:'d8', title:'Synthwave Aesthetic', desc:'80s inspired retrowave visuals.', category:'art', url:'https://picsum.photos/seed/synth1/400/360', type:'image', likes:176, author:'RetroWave', authorId:'demo8', tags:['art','synthwave'] },
+  { id:'d9', title:'Lo-fi Study Vibes', desc:'Cozy corner for deep focus sessions.', category:'music', url:'https://picsum.photos/seed/lofi1/400/500', type:'image', likes:521, author:'LofiBeats', authorId:'demo9', tags:['music','lofi'] },
+  { id:'d10', title:'Pixel Art Village', desc:'8-bit retro pixel art landscape.', category:'gaming', url:'https://picsum.photos/seed/game1/400/420', type:'image', likes:88, author:'PixelDev', authorId:'demo10', tags:['gaming','pixel'] },
+  { id:'d11', title:'Dragon Spirit', desc:'A legendary dragon emerges from clouds.', category:'anime', url:'https://picsum.photos/seed/drag1/400/600', type:'image', likes:301, author:'MythArt', authorId:'demo11', tags:['anime','dragon'] },
+  { id:'d12', title:'Minimal Workspace', desc:'Clean desk setup for productivity.', category:'tech', url:'https://picsum.photos/seed/desk1/400/380', type:'image', likes:159, author:'SetupGuru', authorId:'demo12', tags:['tech','workspace'] },
+];
+
+/* ═══════════════════════════════════════════════
+   FIREBASE READY GATE
+═══════════════════════════════════════════════ */
+function waitForFb(cb) {
+  if (window._fbReady) cb();
+  else document.addEventListener('fbReady', cb, { once: true });
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  waitForFb(initApp);
+});
+
+function initApp() {
+  const { auth, onAuthStateChanged } = _fb;
+
+  // Restore theme
+  const savedTheme = localStorage.getItem('ks-theme') || 'dark';
+  document.body.dataset.theme = savedTheme;
+  const toggle = document.getElementById('theme-toggle');
+  if (toggle) toggle.classList.toggle('on', savedTheme === 'dark');
+
+  onAuthStateChanged(auth, user => {
+    document.getElementById('page-loader').style.display = 'none';
+    if (user) {
+      State.user = user;
+      showApp();
+    } else {
+      showAuth();
+    }
+  });
+
+  // Close modals on backdrop tap
+  document.getElementById('pin-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('pin-modal')) closePinModal();
+  });
+  document.getElementById('settings-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('settings-modal')) closeSettings();
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   AUTH FUNCTIONS
+═══════════════════════════════════════════════ */
+function showAuth() {
+  document.getElementById('auth-screen').classList.remove('hidden');
+  document.getElementById('app').classList.remove('active');
+}
+
+function showApp() {
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('active');
+  updateProfileUI();
+  buildCategoryChips();
+  buildCategoryGrid();
+  loadPins();
+  loadReels();
+  loadUserData();
+}
+
+function switchAuthTab(tab) {
+  ['login','register','phone'].forEach(t => {
+    document.getElementById(`auth-${t}`).classList.add('hidden');
+    document.querySelectorAll('.auth-tab')[['login','register','phone'].indexOf(t)].classList.remove('active');
+  });
+  document.getElementById(`auth-${tab}`).classList.remove('hidden');
+  document.querySelectorAll('.auth-tab')[['login','register','phone'].indexOf(tab)].classList.add('active');
+}
+
+async function emailLogin() {
+  const { auth, signInWithEmailAndPassword } = _fb;
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!email || !pass) { showToast('Please fill all fields'); return; }
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    showToast('Welcome back!');
+  } catch(e) { showToast(e.message.replace('Firebase: ','').substring(0,60)); }
+}
+
+async function emailRegister() {
+  const { auth, createUserWithEmailAndPassword, updateProfile } = _fb;
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  if (!name || !email || !pass) { showToast('Please fill all fields'); return; }
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, { displayName: name });
+    showToast('Account created!');
+  } catch(e) { showToast(e.message.replace('Firebase: ','').substring(0,60)); }
+}
+
+async function googleLogin() {
+  const { auth, GoogleAuthProvider, signInWithPopup } = _fb;
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+    showToast('Welcome!');
+  } catch(e) { showToast(e.message.replace('Firebase: ','').substring(0,60)); }
+}
+
+async function sendOTP() {
+  const { auth, signInWithPhoneNumber, RecaptchaVerifier } = _fb;
+  const phone = document.getElementById('phone-num').value.trim();
+  if (!phone) { showToast('Enter phone number'); return; }
+  try {
+    if (!State.recaptchaVerifier) {
+      State.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+    }
+    State.confirmationResult = await signInWithPhoneNumber(auth, phone, State.recaptchaVerifier);
+    document.getElementById('otp-section').classList.remove('hidden');
+    showToast('OTP sent!');
+  } catch(e) { showToast(e.message.replace('Firebase: ','').substring(0,60)); }
+}
+
+async function verifyOTP() {
+  const code = document.getElementById('otp-code').value.trim();
+  if (!State.confirmationResult) { showToast('Request OTP first'); return; }
+  try {
+    await State.confirmationResult.confirm(code);
+    showToast('Phone verified!');
+  } catch(e) { showToast('Invalid OTP'); }
+}
+
+async function logout() {
+  const { auth, signOut } = _fb;
+  await signOut(auth);
+  closeSettings();
+  State.user = null;
+  showToast('Signed out');
+}
+
+/* ═══════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════ */
+function switchTab(tab) {
+  State.currentTab = tab;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.getElementById(`page-${tab}`).classList.add('active');
+
+  if (tab === 'reels') startReelAutoplay();
+  if (tab === 'profile') loadProfilePins();
+}
+
+/* ═══════════════════════════════════════════════
+   CATEGORY CHIPS
+═══════════════════════════════════════════════ */
+function buildCategoryChips() {
+  const wrap = document.getElementById('category-chips');
+  wrap.innerHTML = CATEGORIES.map(c =>
+    `<button class="chip ${c==='all'?'active':''}" onclick="filterCategory('${c}')">${cap(c)}</button>`
+  ).join('');
+}
+
+function buildCategoryGrid() {
+  const grid = document.getElementById('category-grid');
+  const cats = CATEGORIES.filter(c => c !== 'all');
+  grid.innerHTML = cats.map(c => `
+    <div class="category-card" onclick="searchByCategory('${c}')">
+      <div class="category-card-bg" style="background:${CAT_COLORS[c]||'#888'};opacity:0.25;"></div>
+      <div class="category-card-label">${cap(c)}</div>
+      <div class="category-card-count">${Math.floor(Math.random()*200+20)} pins</div>
+    </div>`
+  ).join('');
+}
+
+function filterCategory(cat) {
+  State.currentCategory = cat;
+  document.querySelectorAll('.chip').forEach(el => {
+    el.classList.toggle('active', el.textContent.toLowerCase() === cat);
+  });
+  renderHomeGrid(cat === 'all' ? State.pins : State.pins.filter(p => p.category === cat));
+}
+
+function searchByCategory(cat) {
+  switchTab('search');
+  document.getElementById('search-input').value = cat;
+  handleSearch(cat);
+}
+
+/* ═══════════════════════════════════════════════
+   PINS LOADING
+═══════════════════════════════════════════════ */
+async function loadPins() {
+  renderSkeletons('home-grid', 8);
+
+  try {
+    const { db, collection, getDocs, orderBy, query, limit } = _fb;
+    const q = query(collection(db, 'pins'), orderBy('createdAt', 'desc'), limit(50));
+    const snap = await getDocs(q);
+    const pins = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    if (pins.length > 0) {
+      State.pins = pins;
+    } else {
+      State.pins = DEMO_PINS;
+    }
+  } catch(e) {
+    State.pins = DEMO_PINS;
+  }
+
+  renderHomeGrid(State.pins);
+  renderRecommended();
+}
+
+async function loadReels() {
+  try {
+    const { db, collection, getDocs, query, where, limit } = _fb;
+    const q = query(collection(db, 'pins'), where('type','==','video'), limit(20));
+    const snap = await getDocs(q);
+    State.reels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { State.reels = []; }
+  renderReels();
+}
+
+async function loadUserData() {
+  if (!State.user) return;
+  try {
+    const { db, doc, getDoc } = _fb;
+    const userDoc = await getDoc(doc(db, 'users', State.user.uid));
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      State.savedPins = data.saved || [];
+      State.likedPins = data.liked || [];
+    }
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER HOME GRID
+═══════════════════════════════════════════════ */
+function renderHomeGrid(pins) {
+  const grid = document.getElementById('home-grid');
+  if (!pins.length) {
+    grid.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--text2)">No pins found</div>`;
+    return;
+  }
+  grid.innerHTML = pins.map(p => pinCardHTML(p)).join('');
+}
+
+function renderRecommended() {
+  if (!State.viewHistory.length) return;
+  const cats = [...new Set(State.viewHistory.map(id => {
+    const p = State.pins.find(x => x.id === id);
+    return p ? p.category : null;
+  }).filter(Boolean))];
+  const recs = State.pins.filter(p => cats.includes(p.category)).slice(0, 6);
+  if (!recs.length) return;
+  document.getElementById('home-recommended').classList.remove('hidden');
+  document.getElementById('recommended-grid').innerHTML = recs.map(p => pinCardHTML(p)).join('');
+}
+
+function pinCardHTML(pin) {
+  const liked = State.likedPins.includes(pin.id);
+  const saved = State.savedPins.includes(pin.id);
+  const isVideo = pin.type === 'video';
+  return `
+  <div class="pin-card" onclick="openPin('${pin.id}')">
+    ${isVideo
+      ? `<div style="background:#000;aspect-ratio:9/16;display:flex;align-items:center;justify-content:center;">
+           <svg width="40" height="40" viewBox="0 0 24 24" fill="white" opacity="0.7"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+         </div>`
+      : `<img src="${pin.url}" alt="${pin.title}" loading="lazy" onerror="this.src='https://picsum.photos/seed/${pin.id}/400/300'"/>`
+    }
+    <div class="pin-card-body">
+      <div class="pin-card-title">${pin.title}</div>
+      <div class="pin-card-meta">
+        <span>${pin.author || 'Unknown'}</span>
+        <span class="like-tag">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="${liked?'var(--red)':'none'}" stroke="var(--red)" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          ${pin.likes||0}
+        </span>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── Skeletons ── */
+function renderSkeletons(gridId, count) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = Array(count).fill('').map(() => `
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-img" style="height:${120+Math.random()*120|0}px"></div>
+      <div class="skeleton skeleton-text" style="margin:10px;height:12px;border-radius:6px;"></div>
+      <div class="skeleton skeleton-text short" style="margin:6px 10px 10px;height:10px;border-radius:6px;width:50%;"></div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   PIN MODAL
+═══════════════════════════════════════════════ */
+function openPin(pinId) {
+  const pin = State.pins.find(p => p.id === pinId) || DEMO_PINS.find(p => p.id === pinId);
+  if (!pin) return;
+
+  State.currentPinId = pinId;
+  if (!State.viewHistory.includes(pinId)) State.viewHistory.unshift(pinId);
+  if (State.viewHistory.length > 20) State.viewHistory.pop();
+
+  const modal = document.getElementById('pin-modal');
+  const img = document.getElementById('pin-modal-img');
+  const vid = document.getElementById('pin-modal-video');
+
+  if (pin.type === 'video') {
+    img.classList.add('hidden');
+    vid.classList.remove('hidden');
+    vid.src = pin.url;
+  } else {
+    vid.classList.add('hidden');
+    img.classList.remove('hidden');
+    img.src = pin.url;
+    img.onerror = () => { img.src = `https://picsum.photos/seed/${pin.id}/800/500`; };
+  }
+
+  document.getElementById('pin-modal-title').textContent = pin.title;
+  document.getElementById('pin-modal-desc').textContent = pin.desc || '';
+
+  const likes = document.getElementById('pin-modal-likes');
+  likes.textContent = pin.likes || 0;
+
+  const likeBtn = document.getElementById('pin-modal-like-btn');
+  const liked = State.likedPins.includes(pinId);
+  likeBtn.querySelector('svg').setAttribute('fill', liked ? 'var(--red)' : 'none');
+
+  const saveBtn = document.getElementById('pin-modal-save-btn');
+  const saved = State.savedPins.includes(pinId);
+  saveBtn.textContent = saved ? '✓ Saved' : 'Save';
+  saveBtn.className = `btn ${saved ? 'btn-blue' : 'btn-primary'} flex-1`;
+
+  // Author
+  const authorDiv = document.getElementById('pin-modal-author');
+  const initial = (pin.author || 'U')[0].toUpperCase();
+  authorDiv.innerHTML = `
+    <div class="avatar" style="background:${CAT_COLORS[pin.category]||'#888'}20;">${initial}</div>
+    <div><div style="font-weight:600;font-size:14px;">${pin.author||'Unknown'}</div>
+    <div style="font-size:12px;color:var(--text2);">${cap(pin.category||'')}</div></div>`;
+
+  // Tags
+  const tagsDiv = document.getElementById('pin-modal-tags');
+  tagsDiv.innerHTML = (pin.tags||[pin.category]).map(t =>
+    `<span class="badge badge-red">${t}</span>`).join('');
+
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePinModal() {
+  document.getElementById('pin-modal').classList.remove('open');
+  document.body.style.overflow = '';
+  const vid = document.getElementById('pin-modal-video');
+  vid.pause(); vid.src = '';
+}
+
+async function likePinFromModal() {
+  if (!State.user) { showToast('Login to like'); return; }
+  const pinId = State.currentPinId;
+  const pin = State.pins.find(p => p.id === pinId);
+  if (!pin) return;
+
+  const liked = State.likedPins.includes(pinId);
+  const btn = document.getElementById('pin-modal-like-btn');
+  const likesEl = document.getElementById('pin-modal-likes');
+  const svg = btn.querySelector('svg');
+
+  if (liked) {
+    State.likedPins = State.likedPins.filter(id => id !== pinId);
+    pin.likes = Math.max(0, (pin.likes||0) - 1);
+    svg.setAttribute('fill','none');
+  } else {
+    State.likedPins.push(pinId);
+    pin.likes = (pin.likes||0) + 1;
+    svg.setAttribute('fill','var(--red)');
+    svg.classList.add('heart-anim');
+    setTimeout(() => svg.classList.remove('heart-anim'), 400);
+  }
+  likesEl.textContent = pin.likes;
+
+  try {
+    const { db, doc, updateDoc, arrayUnion, arrayRemove, increment } = _fb;
+    await updateDoc(doc(db,'users',State.user.uid), {
+      liked: liked ? arrayRemove(pinId) : arrayUnion(pinId)
+    });
+    if (!pin.id.startsWith('d')) {
+      await updateDoc(doc(db,'pins',pinId), { likes: increment(liked ? -1 : 1) });
+    }
+  } catch(e) {}
+
+  renderHomeGrid(State.currentCategory === 'all' ? State.pins : State.pins.filter(p => p.category === State.currentCategory));
+}
+
+async function savePinFromModal() {
+  if (!State.user) { showToast('Login to save'); return; }
+  const pinId = State.currentPinId;
+  const saved = State.savedPins.includes(pinId);
+  const btn = document.getElementById('pin-modal-save-btn');
+
+  if (saved) {
+    State.savedPins = State.savedPins.filter(id => id !== pinId);
+    btn.textContent = 'Save';
+    btn.className = 'btn btn-primary flex-1';
+    showToast('Pin unsaved');
+  } else {
+    State.savedPins.push(pinId);
+    btn.textContent = '✓ Saved';
+    btn.className = 'btn btn-blue flex-1';
+    showToast('Pin saved!');
+  }
+
+  try {
+    const { db, doc, updateDoc, arrayUnion, arrayRemove } = _fb;
+    await updateDoc(doc(db,'users',State.user.uid), {
+      saved: saved ? arrayRemove(pinId) : arrayUnion(pinId)
+    });
+  } catch(e) {}
+
+  updateStats();
+}
+
+/* ═══════════════════════════════════════════════
+   UPLOAD
+═══════════════════════════════════════════════ */
+function switchUploadType(type) {
+  State.uploadType = type;
+  document.querySelectorAll('#page-upload .auth-tab').forEach((el, i) => {
+    el.classList.toggle('active', (i===0 && type==='image') || (i===1 && type==='video'));
+  });
+  const fileInput = document.getElementById('file-input');
+  fileInput.accept = type === 'video' ? 'video/*' : 'image/*';
+  resetUploadPreview();
+}
+
+function handleFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const maxSize = 20 * 1024 * 1024;
+  if (file.size > maxSize) { showToast('File too large (max 20MB)'); return; }
+
+  State.uploadFile = file;
+  const url = URL.createObjectURL(file);
+
+  if (file.type.startsWith('video')) {
+    document.getElementById('upload-preview').classList.add('hidden');
+    const vid = document.getElementById('upload-video-preview');
+    vid.src = url; vid.classList.remove('hidden');
+    State.uploadType = 'video';
+  } else {
+    document.getElementById('upload-video-preview').classList.add('hidden');
+    const img = document.getElementById('upload-preview');
+    img.src = url; img.classList.remove('hidden');
+    State.uploadType = 'image';
+  }
+}
+
+function resetUploadPreview() {
+  State.uploadFile = null;
+  document.getElementById('upload-preview').classList.add('hidden');
+  document.getElementById('upload-video-preview').classList.add('hidden');
+  document.getElementById('file-input').value = '';
+  document.getElementById('pin-title').value = '';
+  document.getElementById('pin-desc').value = '';
+}
+
+async function uploadPin() {
+  if (!State.user) { showToast('Login required'); return; }
+  if (!State.uploadFile) { showToast('Choose a file first'); return; }
+  const title = document.getElementById('pin-title').value.trim();
+  if (!title) { showToast('Add a title'); return; }
+
+  const category = document.getElementById('pin-category').value;
+  const desc = document.getElementById('pin-desc').value.trim();
+
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Uploading…';
+
+  const progressWrap = document.getElementById('upload-progress-wrap');
+  const progressFill = document.getElementById('upload-progress-fill');
+  const progressText = document.getElementById('upload-progress-text');
+  progressWrap.classList.remove('hidden');
+
+  try {
+    const { storage, db, ref, uploadBytesResumable, getDownloadURL, collection, addDoc, serverTimestamp } = _fb;
+
+    const ext = State.uploadFile.name.split('.').pop();
+    const storageRef = ref(storage, `pins/${State.user.uid}/${Date.now()}.${ext}`);
+    const task = uploadBytesResumable(storageRef, State.uploadFile);
+
+    task.on('state_changed',
+      snap => {
+        const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
+        progressFill.style.width = pct + '%';
+        progressText.textContent = `Uploading… ${pct}%`;
+      },
+      err => { showToast('Upload failed: ' + err.message); },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        const pinData = {
+          title, desc, category,
+          url, type: State.uploadType,
+          author: State.user.displayName || 'User',
+          authorId: State.user.uid,
+          likes: 0,
+          tags: [category],
+          createdAt: serverTimestamp()
+        };
+        const docRef = await addDoc(collection(db, 'pins'), pinData);
+        State.pins.unshift({ id: docRef.id, ...pinData, createdAt: new Date() });
+
+        showToast('Pin uploaded!');
+        resetUploadPreview();
+        progressWrap.classList.add('hidden');
+        progressFill.style.width = '0%';
+        renderHomeGrid(State.pins);
+        switchTab('home');
+      }
+    );
+  } catch(e) {
+    showToast('Error: ' + e.message.substring(0,50));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/></svg> Upload Pin`;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   REELS
+═══════════════════════════════════════════════ */
+function renderReels() {
+  const container = document.getElementById('reels-container');
+  if (!State.reels.length) {
+    container.innerHTML = `
+      <div class="reels-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        <p>No video pins yet</p>
+        <p style="font-size:12px;color:var(--text3)">Upload a video to get started</p>
+      </div>`;
+    return;
+  }
+  container.innerHTML = State.reels.map(reel => `
+    <div class="reel-item" data-id="${reel.id}">
+      <video class="reel-video" src="${reel.url}" loop playsinline muted preload="none"></video>
+      <div class="reel-overlay">
+        <div class="reel-info">
+          <div class="reel-title">${reel.title}</div>
+          <div class="reel-author">@${reel.author||'Unknown'}</div>
+        </div>
+      </div>
+      <div class="reel-actions">
+        <button class="reel-action-btn" onclick="event.stopPropagation();likeReel('${reel.id}',this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          ${reel.likes||0}
+        </button>
+        <button class="reel-action-btn" onclick="event.stopPropagation();savePinDirect('${reel.id}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+          Save
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+function startReelAutoplay() {
+  const container = document.getElementById('reels-container');
+  if (!container) return;
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const vid = entry.target.querySelector('video');
+      if (!vid) return;
+      if (entry.isIntersecting) {
+        vid.play().catch(()=>{});
+      } else {
+        vid.pause();
+      }
+    });
+  }, { threshold: 0.6 });
+
+  container.querySelectorAll('.reel-item').forEach(item => observer.observe(item));
+}
+
+function likeReel(id, btn) {
+  showToast('Liked!');
+  btn.querySelector('svg').setAttribute('fill','var(--red)');
+  btn.classList.add('heart-anim');
+}
+
+function savePinDirect(id) {
+  if (State.savedPins.includes(id)) {
+    showToast('Already saved');
+  } else {
+    State.savedPins.push(id);
+    showToast('Saved!');
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   SEARCH
+═══════════════════════════════════════════════ */
+function handleSearch(val) {
+  const clear = document.getElementById('search-clear');
+  if (clear) clear.style.display = val ? 'flex' : 'none';
+
+  clearTimeout(State.searchTimeout);
+  if (!val.trim()) {
+    document.getElementById('search-results-wrap').classList.add('hidden');
+    document.getElementById('category-browse').style.display = '';
+    return;
+  }
+  State.searchTimeout = setTimeout(() => doSearch(val.trim()), 300);
+}
+
+function doSearch(q) {
+  const lower = q.toLowerCase();
+  const results = State.pins.filter(p =>
+    p.title.toLowerCase().includes(lower) ||
+    (p.desc||'').toLowerCase().includes(lower) ||
+    (p.category||'').toLowerCase().includes(lower) ||
+    (p.tags||[]).some(t => t.toLowerCase().includes(lower)) ||
+    (p.author||'').toLowerCase().includes(lower)
+  );
+
+  document.getElementById('category-browse').style.display = 'none';
+  const wrap = document.getElementById('search-results-wrap');
+  const grid = document.getElementById('search-grid');
+
+  if (!results.length) {
+    grid.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text2);column-span:all;">No results for "${q}"</div>`;
+  } else {
+    grid.innerHTML = results.map(p => pinCardHTML(p)).join('');
+  }
+  wrap.classList.remove('hidden');
+}
+
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  handleSearch('');
+}
+
+/* ═══════════════════════════════════════════════
+   PROFILE
+═══════════════════════════════════════════════ */
+function updateProfileUI() {
+  if (!State.user) return;
+  const name = State.user.displayName || State.user.email?.split('@')[0] || 'User';
+  const email = State.user.email || State.user.phoneNumber || '';
+
+  document.getElementById('profile-name-display').textContent = name;
+  document.getElementById('profile-email-display').textContent = email;
+  document.getElementById('settings-email-display').textContent = email;
+
+  const avatarText = document.getElementById('profile-avatar-text');
+  const avatarImg = document.getElementById('profile-avatar-img');
+
+  if (State.user.photoURL) {
+    avatarImg.src = State.user.photoURL;
+    avatarImg.style.display = 'block';
+    avatarText.style.display = 'none';
+  } else {
+    avatarText.textContent = name[0].toUpperCase();
+    avatarImg.style.display = 'none';
+    avatarText.style.display = 'block';
+  }
+}
+
+function updateStats() {
+  const myPins = State.pins.filter(p => p.authorId === State.user?.uid);
+  document.getElementById('stat-pins').textContent = myPins.length;
+  document.getElementById('stat-saved').textContent = State.savedPins.length;
+  document.getElementById('stat-likes').textContent = State.likedPins.length;
+}
+
+function switchProfileTab(tab) {
+  State.profileTab = tab;
+  document.querySelectorAll('.profile-tab').forEach((el, i) => {
+    el.classList.toggle('active', (i===0 && tab==='mine') || (i===1 && tab==='saved'));
+  });
+  loadProfilePins();
+}
+
+function loadProfilePins() {
+  updateStats();
+  const grid = document.getElementById('profile-grid');
+  let pins;
+  if (State.profileTab === 'mine') {
+    pins = State.pins.filter(p => p.authorId === State.user?.uid);
+  } else {
+    pins = State.pins.filter(p => State.savedPins.includes(p.id));
+  }
+
+  if (!pins.length) {
+    grid.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text2);column-span:all;">${State.profileTab==='mine'?'No pins yet. Create your first pin!':'No saved pins yet.'}</div>`;
+    return;
+  }
+  grid.innerHTML = pins.map(p => pinCardHTML(p)).join('');
+}
+
+function changeAvatar() {
+  document.getElementById('avatar-input').click();
+}
+
+async function uploadAvatar(input) {
+  const file = input.files[0];
+  if (!file || !State.user) return;
+  try {
+    const { storage, ref, uploadBytesResumable, getDownloadURL, updateProfile } = _fb;
+    const storageRef = ref(storage, `avatars/${State.user.uid}`);
+    const task = uploadBytesResumable(storageRef, file);
+    showToast('Uploading avatar…');
+    task.on('state_changed', null, e => showToast('Failed: ' + e.message),
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        await updateProfile(State.user, { photoURL: url });
+        updateProfileUI();
+        showToast('Avatar updated!');
+      });
+  } catch(e) { showToast('Error: ' + e.message.substring(0,40)); }
+}
+
+/* ═══════════════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════════════ */
+function openSettings() {
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+
+function toggleTheme() {
+  const current = document.body.dataset.theme;
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.body.dataset.theme = next;
+  localStorage.setItem('ks-theme', next);
+  const toggle = document.getElementById('theme-toggle');
+  toggle.classList.toggle('on', next === 'dark');
+}
+
+function toggleNotif(el) {
+  el.classList.toggle('on');
+  if (el.classList.contains('on')) {
+    requestNotifPermission();
+  }
+}
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) { showToast('Notifications not supported'); return; }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    showToast('Notifications enabled!');
+    try {
+      const { messaging, getToken } = _fb;
+      if (messaging) {
+        const token = await getToken(messaging, { vapidKey: 'YOUR_VAPID_KEY' });
+        const { db, doc, updateDoc } = _fb;
+        if (State.user) await updateDoc(doc(db,'users',State.user.uid), { fcmToken: token });
+      }
+    } catch(e) {}
+  } else {
+    showToast('Permission denied');
+    document.getElementById('notif-toggle').classList.remove('on');
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   AI RECOMMENDATIONS (tag-based)
+═══════════════════════════════════════════════ */
+function getRecommendedPins() {
+  if (!State.viewHistory.length) return State.pins.slice(0,6);
+  const catScores = {};
+  State.viewHistory.slice(0,10).forEach((id, i) => {
+    const p = State.pins.find(x => x.id === id);
+    if (p) catScores[p.category] = (catScores[p.category]||0) + (10-i);
+  });
+  return State.pins
+    .filter(p => !State.viewHistory.includes(p.id))
+    .map(p => ({ ...p, score: catScores[p.category]||0 }))
+    .sort((a,b) => b.score - a.score)
+    .slice(0,6);
+}
+
+/* ═══════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════ */
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+
+// Drag-over effects on upload drop
+document.addEventListener('DOMContentLoaded', () => {
+  const drop = document.getElementById('upload-drop');
+  if (drop) {
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault(); drop.classList.remove('drag-over');
+      const file = e.dataTransfer?.files?.[0];
+      if (file) {
+        const fakeInput = { files: [file] };
+        handleFileSelect(fakeInput);
+      }
+    });
+  }
+});
+
+/* ── Pull-to-refresh on home ── */
+(function() {
+  let startY = 0, pulling = false;
+  const mc = document.getElementById('main-content');
+  if (!mc) return;
+  mc.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+  mc.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy > 80 && mc.scrollTop <= 0 && State.currentTab === 'home') {
+      showToast('Refreshing…');
+      loadPins();
+    }
+  }, { passive: true });
+})();
+
+</script>
+</body>
+</html>
