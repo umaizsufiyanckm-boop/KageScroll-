@@ -1,25 +1,909 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<meta name="theme-color" content="#0a0a0f"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>KageScroll</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-<!-- Firebase SDKs -->
+<style>
+:root {
+  --red: #ff3b30;
+  --blue: #007aff;
+  --purple: #bf5af2;
+  --green: #30d158;
+  --bg: #0a0a0f;
+  --bg2: #111118;
+  --bg3: #1a1a24;
+  --glass: rgba(255,255,255,0.06);
+  --glass2: rgba(255,255,255,0.10);
+  --border: rgba(255,255,255,0.10);
+  --border2: rgba(255,255,255,0.16);
+  --text: #f0f0f5;
+  --text2: #a0a0b8;
+  --text3: #606080;
+  --shadow: 0 8px 32px rgba(0,0,0,0.5);
+  --shadow2: 0 2px 8px rgba(0,0,0,0.3);
+  --radius: 20px;
+  --radius2: 14px;
+  --radius3: 10px;
+  --tab-h: 68px;
+  --top-h: 60px;
+  --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+.light {
+  --bg: #f2f2f7;
+  --bg2: #ffffff;
+  --bg3: #e8e8ef;
+  --glass: rgba(255,255,255,0.7);
+  --glass2: rgba(255,255,255,0.9);
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.14);
+  --text: #1a1a2e;
+  --text2: #5a5a7a;
+  --text3: #9a9ab0;
+  --shadow: 0 8px 32px rgba(0,0,0,0.12);
+  --shadow2: 0 2px 8px rgba(0,0,0,0.08);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+}
+#app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+/* ─── TOP BAR ─── */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: var(--top-h);
+  background: rgba(10,10,15,0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+  transition: background var(--transition);
+}
+.light #topbar { background: rgba(242,242,247,0.85); }
+#topbar .logo {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px; font-weight: 700;
+  background: linear-gradient(135deg, var(--red) 0%, #ff6b6b 50%, var(--purple) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+}
+#topbar .actions { display: flex; gap: 8px; align-items: center; }
+.icon-btn {
+  width: 36px; height: 36px;
+  border: none; background: var(--glass); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text);
+  border: 1px solid var(--border);
+  transition: all var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.icon-btn:active { transform: scale(0.9); background: var(--glass2); }
+.avatar-sm {
+  width: 32px; height: 32px; border-radius: 50%;
+  object-fit: cover; border: 2px solid var(--red);
+  cursor: pointer;
+}
+
+/* ─── BOTTOM TAB BAR ─── */
+#tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  height: var(--tab-h);
+  background: rgba(10,10,15,0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-around;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.light #tabbar { background: rgba(242,242,247,0.9); }
+.tab-btn {
+  flex: 1; height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  border: none; background: none; cursor: pointer;
+  color: var(--text3); transition: color var(--transition);
+  -webkit-tap-highlight-color: transparent; position: relative;
+}
+.tab-btn.active { color: var(--red); }
+.tab-btn span { font-size: 10px; font-weight: 500; font-family: 'DM Sans', sans-serif; }
+.tab-indicator {
+  position: absolute; bottom: -1px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--red);
+  opacity: 0; transition: opacity var(--transition);
+}
+.tab-btn.active .tab-indicator { opacity: 1; }
+.tab-btn svg { transition: transform var(--transition); }
+.tab-btn.active svg { transform: scale(1.15); }
+.upload-tab {
+  width: 44px; height: 44px; border-radius: 50% !important;
+  background: linear-gradient(135deg, var(--red), #ff6b6b) !important;
+  color: white !important; box-shadow: 0 4px 16px rgba(255,59,48,0.4);
+  margin-bottom: 8px; flex: none;
+}
+
+/* ─── MAIN SCROLL AREA ─── */
+#main {
+  flex: 1; overflow: hidden; position: relative;
+  margin-top: var(--top-h); margin-bottom: var(--tab-h);
+}
+.page {
+  position: absolute; inset: 0; overflow-y: auto;
+  scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+  display: none; opacity: 0; transition: opacity 0.2s ease;
+}
+.page.active { display: block; opacity: 1; }
+.page-content { padding: 12px 10px 20px; }
+
+/* ─── MASONRY GRID ─── */
+.masonry {
+  columns: 2; column-gap: 10px;
+  padding: 8px 10px 20px;
+}
+.masonry-item {
+  break-inside: avoid; margin-bottom: 10px;
+  border-radius: var(--radius2); overflow: hidden;
+  background: var(--bg3); position: relative;
+  cursor: pointer; transition: transform var(--transition);
+  border: 1px solid var(--border);
+  animation: fadeUp 0.4s ease forwards;
+}
+.masonry-item:active { transform: scale(0.97); }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.masonry-item img, .masonry-item video {
+  width: 100%; display: block; object-fit: cover;
+  background: var(--bg3);
+}
+.pin-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+  padding: 20px 10px 10px;
+  opacity: 0; transition: opacity var(--transition);
+}
+.masonry-item:hover .pin-overlay, .masonry-item:focus .pin-overlay { opacity: 1; }
+.pin-title { font-size: 12px; font-weight: 600; color: #fff; line-height: 1.3; }
+.pin-actions-row {
+  display: flex; gap: 6px; align-items: center; margin-top: 6px;
+}
+.pin-action-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #fff; transition: all var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.pin-action-btn:active { transform: scale(0.85); }
+.pin-action-btn.liked { background: rgba(255,59,48,0.6); color: #fff; }
+.pin-action-btn.saved { background: rgba(0,122,255,0.6); color: #fff; }
+.video-badge {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(0,0,0,0.6); color: #fff;
+  font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* ─── SKELETON ─── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--bg2) 50%, var(--bg3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--radius2);
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-item { break-inside: avoid; margin-bottom: 10px; border-radius: var(--radius2); }
+
+/* ─── SEARCH PAGE ─── */
+.search-bar-wrap {
+  padding: 12px 12px 8px;
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+}
+.light .search-bar-wrap { background: var(--bg); }
+.search-bar {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg3); border-radius: 14px;
+  border: 1px solid var(--border2); padding: 10px 14px;
+  transition: border-color var(--transition);
+}
+.search-bar:focus-within { border-color: var(--blue); }
+.search-bar svg { color: var(--text3); flex-shrink: 0; }
+.search-bar input {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text); font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+}
+.search-bar input::placeholder { color: var(--text3); }
+.category-chips {
+  display: flex; gap: 8px; overflow-x: auto; padding: 0 12px 12px;
+  scrollbar-width: none;
+}
+.category-chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text2); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.chip.active { background: var(--red); border-color: var(--red); color: #fff; }
+.chip:active { transform: scale(0.95); }
+
+/* ─── UPLOAD PAGE ─── */
+.upload-page { padding: 16px 16px 24px; }
+.upload-zone {
+  border: 2px dashed var(--border2); border-radius: var(--radius);
+  padding: 40px 20px; text-align: center;
+  background: var(--bg3); cursor: pointer;
+  transition: all var(--transition); margin-bottom: 16px;
+}
+.upload-zone.drag-over { border-color: var(--red); background: rgba(255,59,48,0.08); }
+.upload-zone svg { color: var(--text3); margin-bottom: 12px; }
+.upload-zone h3 { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+.upload-zone p { color: var(--text2); font-size: 13px; }
+.upload-preview-wrap { position: relative; margin-bottom: 16px; }
+.upload-preview {
+  width: 100%; max-height: 300px; object-fit: cover;
+  border-radius: var(--radius2); display: none;
+}
+.remove-preview {
+  position: absolute; top: 8px; right: 8px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(0,0,0,0.6); border: none;
+  color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.input-group { margin-bottom: 14px; }
+.input-group label { display: block; font-size: 13px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+.input-group input, .input-group textarea, .input-group select {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius3); padding: 12px 14px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none;
+  transition: border-color var(--transition);
+}
+.input-group input:focus, .input-group textarea:focus { border-color: var(--blue); }
+.input-group textarea { resize: vertical; min-height: 80px; }
+.input-group select option { background: var(--bg2); }
+.btn-primary {
+  width: 100%; padding: 14px; border-radius: var(--radius2);
+  background: linear-gradient(135deg, var(--red), #ff6b6b);
+  color: #fff; border: none; font-family: 'Rajdhani', sans-serif;
+  font-size: 17px; font-weight: 700; letter-spacing: 0.5px;
+  cursor: pointer; transition: all var(--transition);
+  box-shadow: 0 4px 16px rgba(255,59,48,0.35);
+}
+.btn-primary:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(255,59,48,0.2); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── REELS PAGE ─── */
+#page-reels {
+  background: #000;
+}
+.reels-container {
+  height: 100%; overflow-y: scroll; scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+.reels-container::-webkit-scrollbar { display: none; }
+.reel-item {
+  height: 100%; scroll-snap-align: start; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  background: #000;
+}
+.reel-video {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.reel-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 16px 16px calc(var(--tab-h) + 16px);
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);
+}
+.reel-info h3 { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.reel-info p { font-size: 13px; color: rgba(255,255,255,0.8); }
+.reel-side-actions {
+  position: absolute; right: 12px; bottom: calc(var(--tab-h) + 80px);
+  display: flex; flex-direction: column; gap: 20px; align-items: center;
+}
+.reel-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  color: #fff; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.reel-btn svg { filter: drop-shadow(0 1px 4px rgba(0,0,0,0.5)); }
+.reel-btn span { font-size: 11px; font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+.reel-play-icon {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; opacity: 0; transition: opacity 0.2s ease; pointer-events: none;
+}
+.reel-play-icon.show { opacity: 1; }
+
+/* ─── PROFILE PAGE ─── */
+.profile-header {
+  padding: 24px 16px 16px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.profile-avatar-wrap {
+  position: relative; margin-bottom: 12px;
+}
+.profile-avatar {
+  width: 88px; height: 88px; border-radius: 50%;
+  object-fit: cover; border: 3px solid var(--red);
+  box-shadow: 0 0 0 3px rgba(255,59,48,0.2);
+}
+.avatar-placeholder {
+  width: 88px; height: 88px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--red), var(--purple));
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Rajdhani', sans-serif; font-size: 32px; font-weight: 700; color: #fff;
+  border: 3px solid var(--red);
+}
+.profile-name {
+  font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700;
+  margin-bottom: 4px;
+}
+.profile-email { color: var(--text2); font-size: 13px; margin-bottom: 16px; }
+.profile-stats { display: flex; gap: 24px; margin-bottom: 20px; }
+.stat { text-align: center; }
+.stat-val { font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700; }
+.stat-label { font-size: 12px; color: var(--text2); }
+.profile-tabs {
+  display: flex; border-bottom: 1px solid var(--border); margin: 0 16px;
+}
+.profile-tab {
+  flex: 1; padding: 12px; text-align: center; font-size: 13px; font-weight: 600;
+  color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all var(--transition); -webkit-tap-highlight-color: transparent;
+}
+.profile-tab.active { color: var(--red); border-bottom-color: var(--red); }
+.edit-username-wrap {
+  display: flex; gap: 8px; align-items: center; padding: 0 16px 16px;
+}
+.edit-username-wrap input {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius3); padding: 8px 12px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none;
+}
+.btn-sm {
+  padding: 8px 14px; border-radius: var(--radius3);
+  background: var(--blue); color: #fff; border: none;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-sm:active { transform: scale(0.95); }
+
+/* ─── AUTH MODAL ─── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  background: var(--bg2); border-radius: 28px 28px 0 0;
+  width: 100%; max-width: 480px;
+  padding: 20px 24px 40px;
+  border: 1px solid var(--border); border-bottom: none;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-handle {
+  width: 36px; height: 4px; background: var(--border2);
+  border-radius: 2px; margin: 0 auto 20px;
+}
+.modal-title {
+  font-family: 'Rajdhani', sans-serif; font-size: 24px; font-weight: 700;
+  text-align: center; margin-bottom: 6px;
+}
+.modal-sub { color: var(--text2); font-size: 14px; text-align: center; margin-bottom: 24px; }
+.auth-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.auth-tab {
+  flex: 1; padding: 10px; border-radius: var(--radius3);
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text2); font-size: 13px; font-weight: 600;
+  cursor: pointer; text-align: center; transition: all var(--transition);
+}
+.auth-tab.active { background: var(--red); border-color: var(--red); color: #fff; }
+.auth-form { display: flex; flex-direction: column; gap: 12px; }
+.auth-input {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius3); padding: 14px 16px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 15px; outline: none;
+  transition: border-color var(--transition); width: 100%;
+}
+.auth-input:focus { border-color: var(--blue); }
+.auth-divider {
+  text-align: center; color: var(--text3); font-size: 13px;
+  position: relative; margin: 4px 0;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; position: absolute; top: 50%; width: 40%;
+  height: 1px; background: var(--border);
+}
+.auth-divider::before { left: 0; }
+.auth-divider::after { right: 0; }
+.btn-google {
+  width: 100%; padding: 14px; border-radius: var(--radius2);
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px;
+  font-weight: 500; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; gap: 10px; transition: all var(--transition);
+}
+.btn-google:active { transform: scale(0.98); }
+#recaptcha-container { margin: 4px 0; }
+
+/* ─── PIN DETAIL MODAL ─── */
+.pin-detail-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(12px);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; transition: opacity 0.25s ease; pointer-events: none;
+}
+.pin-detail-overlay.open { opacity: 1; pointer-events: all; }
+.pin-detail-sheet {
+  background: var(--bg2); border-radius: 28px 28px 0 0;
+  width: 100%; max-width: 480px; max-height: 92vh;
+  overflow-y: auto; padding-bottom: 40px;
+  border: 1px solid var(--border); border-bottom: none;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.pin-detail-overlay.open .pin-detail-sheet { transform: translateY(0); }
+.pin-detail-img { width: 100%; max-height: 360px; object-fit: cover; border-radius: 24px 24px 0 0; }
+.pin-detail-body { padding: 16px 20px; }
+.pin-detail-title { font-family: 'Rajdhani', sans-serif; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.pin-detail-desc { color: var(--text2); font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
+.pin-detail-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.action-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 16px; border-radius: 20px;
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.action-pill:active { transform: scale(0.95); }
+.action-pill.active-red { background: rgba(255,59,48,0.2); border-color: var(--red); color: var(--red); }
+.action-pill.active-blue { background: rgba(0,122,255,0.2); border-color: var(--blue); color: var(--blue); }
+
+/* ─── SETTINGS PANEL ─── */
+.settings-overlay {
+  position: fixed; inset: 0; z-index: 180;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; transition: opacity 0.25s ease; pointer-events: none;
+}
+.settings-overlay.open { opacity: 1; pointer-events: all; }
+.settings-sheet {
+  background: var(--bg2); border-radius: 28px 28px 0 0;
+  width: 100%; max-width: 480px; padding: 20px 20px 48px;
+  border: 1px solid var(--border); border-bottom: none;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.settings-overlay.open .settings-sheet { transform: translateY(0); }
+.settings-title { font-family: 'Rajdhani', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 20px; text-align: center; }
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-size: 15px; font-weight: 500; }
+.settings-row-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.toggle-switch {
+  width: 48px; height: 28px; border-radius: 14px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  position: relative; cursor: pointer; transition: background var(--transition);
+}
+.toggle-switch.on { background: var(--green); border-color: var(--green); }
+.toggle-knob {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; position: absolute; top: 3px; left: 3px;
+  transition: transform var(--transition);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.toggle-switch.on .toggle-knob { transform: translateX(20px); }
+.btn-danger {
+  width: 100%; padding: 14px; border-radius: var(--radius2);
+  background: rgba(255,59,48,0.15); border: 1px solid var(--red);
+  color: var(--red); font-family: 'Rajdhani', sans-serif;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  transition: all var(--transition); margin-top: 16px;
+}
+.btn-danger:active { background: rgba(255,59,48,0.25); }
+
+/* ─── TOAST ─── */
+#toast {
+  position: fixed; bottom: calc(var(--tab-h) + 16px); left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text); padding: 10px 20px; border-radius: 20px;
+  font-size: 13px; font-weight: 500; z-index: 300;
+  opacity: 0; transition: all 0.3s ease; pointer-events: none;
+  backdrop-filter: blur(12px); box-shadow: var(--shadow);
+  white-space: nowrap; max-width: 90vw;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.success { border-color: var(--green); color: var(--green); }
+#toast.error { border-color: var(--red); color: var(--red); }
+
+/* ─── UPLOAD PROGRESS ─── */
+.upload-progress-bar {
+  height: 3px; border-radius: 2px; background: var(--border);
+  overflow: hidden; margin-bottom: 12px; display: none;
+}
+.upload-progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--red), var(--purple));
+  border-radius: 2px; transition: width 0.3s ease; width: 0%;
+}
+.upload-progress-bar.visible { display: block; }
+
+/* ─── MISC ─── */
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px 4px;
+}
+.section-title { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 700; }
+.section-action { font-size: 13px; color: var(--blue); cursor: pointer; }
+.empty-state {
+  text-align: center; padding: 48px 24px; color: var(--text2);
+}
+.empty-state svg { margin-bottom: 16px; color: var(--text3); }
+.empty-state h3 { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+.spinner {
+  width: 24px; height: 24px; border: 2px solid var(--border);
+  border-top-color: var(--red); border-radius: 50%;
+  animation: spin 0.7s linear infinite; margin: 24px auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-more-trigger { height: 40px; display: flex; align-items: center; justify-content: center; }
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR -->
+  <header id="topbar">
+    <div class="logo">KageScroll</div>
+    <div class="actions">
+      <button class="icon-btn" id="notif-btn" aria-label="Notifications">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="settings-btn" aria-label="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <img class="avatar-sm hidden" id="topbar-avatar" src="" alt="Profile" id="profile-btn-top">
+    </div>
+  </header>
+
+  <!-- MAIN PAGES -->
+  <main id="main">
+    <!-- HOME -->
+    <section class="page active" id="page-home">
+      <div class="section-header">
+        <span class="section-title">Trending</span>
+        <span class="section-action">See all</span>
+      </div>
+      <div class="masonry" id="home-grid"></div>
+      <div class="load-more-trigger" id="home-load-trigger">
+        <div class="spinner hidden" id="home-spinner"></div>
+      </div>
+    </section>
+
+    <!-- SEARCH -->
+    <section class="page" id="page-search">
+      <div class="search-bar-wrap">
+        <div class="search-bar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input type="text" id="search-input" placeholder="Search pins, art, anime…" autocomplete="off">
+        </div>
+      </div>
+      <div class="category-chips" id="category-chips">
+        <div class="chip active" data-cat="all">All</div>
+        <div class="chip" data-cat="anime">Anime</div>
+        <div class="chip" data-cat="tech">Tech</div>
+        <div class="chip" data-cat="art">Art</div>
+        <div class="chip" data-cat="nature">Nature</div>
+        <div class="chip" data-cat="architecture">Architecture</div>
+        <div class="chip" data-cat="fashion">Fashion</div>
+        <div class="chip" data-cat="food">Food</div>
+      </div>
+      <div class="masonry" id="search-grid"></div>
+      <div class="load-more-trigger" id="search-load-trigger">
+        <div class="spinner hidden" id="search-spinner"></div>
+      </div>
+    </section>
+
+    <!-- UPLOAD -->
+    <section class="page" id="page-upload">
+      <div class="upload-page">
+        <h2 style="font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;margin-bottom:16px;">Create Pin</h2>
+        <input type="file" id="file-input" accept="image/*,video/*" class="hidden" aria-label="Upload file">
+        <div class="upload-zone" id="upload-zone">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <h3>Tap to Upload</h3>
+          <p>Image or Video • Max 50MB</p>
+        </div>
+        <div class="upload-preview-wrap" id="preview-wrap" style="display:none;">
+          <img class="upload-preview" id="preview-img" alt="Preview">
+          <video class="upload-preview" id="preview-vid" muted playsinline></video>
+          <button class="remove-preview" id="remove-preview-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="upload-progress-bar" id="upload-progress-bar">
+          <div class="upload-progress-fill" id="upload-progress-fill"></div>
+        </div>
+        <div class="input-group">
+          <label>Title</label>
+          <input type="text" id="pin-title" placeholder="Give your pin a title" maxlength="100">
+        </div>
+        <div class="input-group">
+          <label>Description</label>
+          <textarea id="pin-desc" placeholder="What's this pin about?" maxlength="500"></textarea>
+        </div>
+        <div class="input-group">
+          <label>Category</label>
+          <select id="pin-category">
+            <option value="anime">Anime</option>
+            <option value="tech">Tech</option>
+            <option value="art">Art</option>
+            <option value="nature">Nature</option>
+            <option value="architecture">Architecture</option>
+            <option value="fashion">Fashion</option>
+            <option value="food">Food</option>
+            <option value="trending">Trending</option>
+          </select>
+        </div>
+        <button class="btn-primary" id="upload-btn">Publish Pin</button>
+      </div>
+    </section>
+
+    <!-- REELS -->
+    <section class="page" id="page-reels">
+      <div class="reels-container" id="reels-container"></div>
+    </section>
+
+    <!-- PROFILE -->
+    <section class="page" id="page-profile">
+      <div id="profile-content">
+        <!-- auth required state -->
+        <div id="profile-auth-required" style="display:none;">
+          <div class="empty-state" style="padding-top:80px;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+            <h3>Sign in to continue</h3>
+            <p>Your pins, saves, and profile — all in one place.</p>
+            <button class="btn-primary" id="profile-signin-btn" style="margin-top:24px;max-width:240px;margin-left:auto;margin-right:auto;">Sign In</button>
+          </div>
+        </div>
+        <!-- logged in state -->
+        <div id="profile-logged">
+          <div class="profile-header">
+            <div class="profile-avatar-wrap">
+              <img class="profile-avatar hidden" id="profile-avatar-img" src="" alt="Avatar">
+              <div class="avatar-placeholder hidden" id="profile-avatar-ph"></div>
+            </div>
+            <div class="profile-name" id="profile-name">User</div>
+            <div class="profile-email" id="profile-email"></div>
+            <div class="profile-stats">
+              <div class="stat"><div class="stat-val" id="stat-pins">0</div><div class="stat-label">Pins</div></div>
+              <div class="stat"><div class="stat-val" id="stat-saved">0</div><div class="stat-label">Saved</div></div>
+              <div class="stat"><div class="stat-val" id="stat-liked">0</div><div class="stat-label">Liked</div></div>
+            </div>
+          </div>
+          <div class="edit-username-wrap">
+            <input type="text" id="edit-username" placeholder="Edit username">
+            <button class="btn-sm" id="save-username-btn">Save</button>
+          </div>
+          <div class="profile-tabs">
+            <div class="profile-tab active" data-ptab="my-pins">My Pins</div>
+            <div class="profile-tab" data-ptab="saved">Saved</div>
+            <div class="profile-tab" data-ptab="liked">Liked</div>
+          </div>
+          <div class="masonry" id="profile-grid" style="margin-top:12px;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- BOTTOM TAB BAR -->
+  <nav id="tabbar" role="navigation" aria-label="Main navigation">
+    <button class="tab-btn active" data-tab="home" aria-label="Home">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span>Home</span>
+      <div class="tab-indicator"></div>
+    </button>
+    <button class="tab-btn" data-tab="search" aria-label="Search">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <span>Search</span>
+      <div class="tab-indicator"></div>
+    </button>
+    <button class="tab-btn upload-tab" data-tab="upload" aria-label="Upload">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      <span>Create</span>
+    </button>
+    <button class="tab-btn" data-tab="reels" aria-label="Reels">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>
+      </svg>
+      <span>Reels</span>
+      <div class="tab-indicator"></div>
+    </button>
+    <button class="tab-btn" data-tab="profile" aria-label="Profile">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span>Profile</span>
+      <div class="tab-indicator"></div>
+    </button>
+  </nav>
+
+  <!-- AUTH MODAL -->
+  <div class="modal-overlay" id="auth-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Welcome Back</div>
+      <div class="modal-sub">Sign in to like, save and upload pins</div>
+      <div class="auth-tabs">
+        <div class="auth-tab active" data-atab="email">Email</div>
+        <div class="auth-tab" data-atab="phone">Phone</div>
+      </div>
+      <!-- EMAIL AUTH -->
+      <div id="auth-email-form" class="auth-form">
+        <input type="email" class="auth-input" id="auth-email" placeholder="Email address" autocomplete="email">
+        <input type="password" class="auth-input" id="auth-password" placeholder="Password" autocomplete="current-password">
+        <button class="btn-primary" id="auth-email-btn">Continue</button>
+        <div class="auth-divider">or</div>
+        <button class="btn-google" id="auth-google-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continue with Google
+        </button>
+      </div>
+      <!-- PHONE AUTH -->
+      <div id="auth-phone-form" class="auth-form hidden">
+        <div id="phone-step-1">
+          <input type="tel" class="auth-input" id="auth-phone" placeholder="+91 9999999999" autocomplete="tel">
+          <div id="recaptcha-container"></div>
+          <button class="btn-primary" id="auth-phone-btn">Send OTP</button>
+        </div>
+        <div id="phone-step-2" class="hidden">
+          <p style="color:var(--text2);font-size:14px;margin-bottom:12px;text-align:center;">Enter the OTP sent to your number</p>
+          <input type="text" class="auth-input" id="auth-otp" placeholder="6-digit OTP" maxlength="6" inputmode="numeric">
+          <button class="btn-primary" id="auth-otp-btn">Verify OTP</button>
+        </div>
+      </div>
+      <button class="icon-btn" id="auth-close-btn" style="position:absolute;top:16px;right:16px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- PIN DETAIL MODAL -->
+  <div class="pin-detail-overlay" id="pin-detail-modal">
+    <div class="pin-detail-sheet">
+      <div class="modal-handle" style="margin-top:8px;"></div>
+      <img class="pin-detail-img hidden" id="pd-img" alt="">
+      <video class="pin-detail-img hidden" id="pd-vid" muted playsinline controls></video>
+      <div class="pin-detail-body">
+        <div class="pin-detail-title" id="pd-title"></div>
+        <div class="pin-detail-desc" id="pd-desc"></div>
+        <div class="pin-detail-actions">
+          <div class="action-pill" id="pd-like-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            Like
+          </div>
+          <div class="action-pill" id="pd-save-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            Save
+          </div>
+          <div class="action-pill" id="pd-download-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </div>
+          <div class="action-pill" id="pd-share-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Share
+          </div>
+        </div>
+      </div>
+      <button class="icon-btn" id="pd-close-btn" style="position:absolute;top:12px;right:12px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- SETTINGS PANEL -->
+  <div class="settings-overlay" id="settings-overlay">
+    <div class="settings-sheet">
+      <div class="modal-handle"></div>
+      <div class="settings-title">Settings</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Dark Mode</div>
+          <div class="settings-row-sub">Toggle app theme</div>
+        </div>
+        <div class="toggle-switch on" id="theme-toggle">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Push Notifications</div>
+          <div class="settings-row-sub" id="notif-status">Enable alerts</div>
+        </div>
+        <div class="toggle-switch" id="notif-toggle">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Autoplay Videos</div>
+          <div class="settings-row-sub">In feed and reels</div>
+        </div>
+        <div class="toggle-switch on" id="autoplay-toggle">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+      <div id="settings-user-info" style="padding:16px 0;border-bottom:1px solid var(--border);display:none;">
+        <div class="settings-row-label" id="settings-user-name"></div>
+        <div class="settings-row-sub" id="settings-user-email"></div>
+      </div>
+      <button class="btn-danger" id="logout-btn" style="display:none;">Sign Out</button>
+      <button class="btn-primary" id="settings-login-btn" style="margin-top:16px;display:none;">Sign In</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<!-- FIREBASE -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, getDoc, doc, updateDoc, arrayUnion, arrayRemove, query, where, orderBy, limit, onSnapshot, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
-  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPhoneNumber, RecaptchaVerifier, onAuthStateChanged, signOut, updateProfile } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
-  // ============================================================
-  // FIREBASE CONFIG — Replace with your project credentials
-  // ============================================================
-  const firebaseConfig = {
+// ─── FIREBASE CONFIG ───
+const firebaseConfig = {
     apiKey: "AIzaSyDV69KQYx62GnifnvmzloTX40VuoDRo9p0",
     authDomain: "kage-scroll.firebaseapp.com",
     databaseURL: "https://kage-scroll-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -28,2247 +912,1220 @@
     messagingSenderId: "29096130745",
     appId: "1:29096130745:web:0ec33bde947826d2c48368"
   };
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  const storage = getStorage(app);
 
-  let messaging = null;
-  try { messaging = getMessaging(app); } catch(e) {}
-
-  // ── Expose to global ──────────────────────────────────────────
-  window._fb = { app, auth, db, storage, messaging,
-    GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword,
-    createUserWithEmailAndPassword, signInWithPhoneNumber, RecaptchaVerifier,
-    onAuthStateChanged, signOut, updateProfile,
-    collection, addDoc, getDocs, getDoc, doc, updateDoc,
-    arrayUnion, arrayRemove, query, where, orderBy, limit,
-    onSnapshot, serverTimestamp, increment,
-    ref, uploadBytesResumable, getDownloadURL,
-    getToken, onMessage
-  };
-  window._fbReady = true;
-  document.dispatchEvent(new Event('fbReady'));
-</script>
-
-<style>
-/* ═══════════════════════════════════════════════
-   DESIGN TOKENS & RESET
-═══════════════════════════════════════════════ */
-:root {
-  --red: #ff3b30;
-  --blue: #007aff;
-  --red-dim: rgba(255,59,48,0.15);
-  --blue-dim: rgba(0,122,255,0.15);
-
-  /* Dark theme (default) */
-  --bg: #0a0a0f;
-  --bg2: #111118;
-  --bg3: #1a1a24;
-  --surface: rgba(255,255,255,0.06);
-  --surface-hover: rgba(255,255,255,0.10);
-  --border: rgba(255,255,255,0.08);
-  --text: #f5f5f7;
-  --text2: rgba(245,245,247,0.6);
-  --text3: rgba(245,245,247,0.35);
-  --glass: rgba(15,15,22,0.72);
-  --glass-border: rgba(255,255,255,0.10);
-  --shadow: 0 8px 32px rgba(0,0,0,0.45);
-  --radius-sm: 12px;
-  --radius: 18px;
-  --radius-lg: 24px;
-  --nav-h: 64px;
-  --header-h: 56px;
-  --font: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-[data-theme="light"] {
-  --bg: #f2f2f7;
-  --bg2: #ffffff;
-  --bg3: #e5e5ea;
-  --surface: rgba(0,0,0,0.04);
-  --surface-hover: rgba(0,0,0,0.08);
-  --border: rgba(0,0,0,0.08);
-  --text: #1c1c1e;
-  --text2: rgba(28,28,30,0.6);
-  --text3: rgba(28,28,30,0.35);
-  --glass: rgba(242,242,247,0.82);
-  --glass-border: rgba(0,0,0,0.08);
-  --shadow: 0 8px 32px rgba(0,0,0,0.12);
-}
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
-
-body {
-  font-family: var(--font);
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100dvh;
-  overflow-x: hidden;
-  overscroll-behavior: none;
-  transition: background 0.3s, color 0.3s;
-}
-
-img, video { display: block; width: 100%; }
-
-/* scrollbar */
-::-webkit-scrollbar { width: 0; height: 0; }
-
-/* ── Selection ── */
-::selection { background: var(--blue-dim); color: var(--text); }
-
-/* ═══════════════════════════════════════════════
-   UTILITY
-═══════════════════════════════════════════════ */
-.hidden { display: none !important; }
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.items-center { align-items: center; }
-.justify-center { justify-content: center; }
-.gap-2 { gap: 8px; }
-.gap-3 { gap: 12px; }
-.gap-4 { gap: 16px; }
-.w-full { width: 100%; }
-.relative { position: relative; }
-.absolute { position: absolute; }
-.overflow-hidden { overflow: hidden; }
-.text-center { text-align: center; }
-.pointer { cursor: pointer; }
-.no-select { user-select: none; }
-
-/* ── Glassmorphism Card ── */
-.glass {
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-}
-
-/* ── Buttons ── */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  gap: 8px; padding: 12px 20px;
-  border: none; outline: none;
-  border-radius: var(--radius-sm);
-  font-family: var(--font);
-  font-size: 15px; font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s, opacity 0.15s, box-shadow 0.15s;
-  -webkit-tap-highlight-color: transparent;
-  white-space: nowrap;
-}
-.btn:active { transform: scale(0.96); opacity: 0.85; }
-
-.btn-primary {
-  background: var(--red);
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(255,59,48,0.35);
-}
-.btn-primary:hover { box-shadow: 0 6px 28px rgba(255,59,48,0.5); }
-
-.btn-secondary {
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-
-.btn-blue {
-  background: var(--blue);
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(0,122,255,0.35);
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--text2);
-  border: 1px solid var(--border);
-}
-
-.btn-icon {
-  width: 42px; height: 42px; padding: 0;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.2s, transform 0.15s;
-}
-.btn-icon:active { transform: scale(0.92); }
-.btn-icon:hover { background: var(--surface-hover); }
-
-/* ── Inputs ── */
-.input {
-  width: 100%;
-  padding: 13px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-family: var(--font);
-  font-size: 15px;
-  outline: none;
-  transition: border-color 0.2s, background 0.2s;
-}
-.input:focus {
-  border-color: var(--blue);
-  background: var(--surface-hover);
-}
-.input::placeholder { color: var(--text3); }
-
-/* ── Badge ── */
-.badge {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 3px 8px;
-  border-radius: 20px;
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 0.3px;
-}
-.badge-red { background: var(--red-dim); color: var(--red); }
-.badge-blue { background: var(--blue-dim); color: var(--blue); }
-
-/* ── Toast ── */
-#toast {
-  position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(20px);
-  color: var(--text);
-  padding: 10px 20px;
-  border-radius: 100px;
-  font-size: 13px; font-weight: 500;
-  z-index: 9999;
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
-  white-space: nowrap;
-  max-width: calc(100vw - 40px);
-}
-#toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* ── Loader ── */
-.spinner {
-  width: 20px; height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--blue);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.page-loader {
-  position: fixed; inset: 0;
-  background: var(--bg);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 16px;
-  z-index: 10000;
-}
-
-/* ═══════════════════════════════════════════════
-   SPLASH / AUTH SCREEN
-═══════════════════════════════════════════════ */
-#auth-screen {
-  position: fixed; inset: 0;
-  background: var(--bg);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 32px 24px;
-  z-index: 1000;
-  overflow-y: auto;
-}
-
-.auth-logo {
-  width: 72px; height: 72px;
-  background: linear-gradient(135deg, var(--red), #ff6b6b);
-  border-radius: 22px;
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 20px;
-  box-shadow: 0 8px 32px rgba(255,59,48,0.4);
-}
-
-.auth-title {
-  font-size: 32px; font-weight: 800;
-  letter-spacing: -0.5px;
-  margin-bottom: 6px;
-}
-
-.auth-subtitle {
-  font-size: 15px; color: var(--text2);
-  margin-bottom: 36px;
-  text-align: center;
-}
-
-.auth-card {
-  width: 100%; max-width: 380px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 28px 24px;
-}
-
-.auth-tabs {
-  display: flex;
-  background: var(--surface);
-  border-radius: var(--radius-sm);
-  padding: 4px;
-  margin-bottom: 24px;
-}
-.auth-tab {
-  flex: 1; padding: 9px;
-  border-radius: 9px;
-  border: none; background: transparent;
-  color: var(--text2);
-  font-family: var(--font);
-  font-size: 13px; font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.auth-tab.active {
-  background: var(--bg2);
-  color: var(--text);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
-
-.auth-form { display: flex; flex-direction: column; gap: 12px; }
-.auth-form label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: -4px; }
-
-.divider {
-  display: flex; align-items: center; gap: 12px;
-  margin: 16px 0;
-}
-.divider::before, .divider::after {
-  content: ''; flex: 1;
-  height: 1px; background: var(--border);
-}
-.divider span { font-size: 12px; color: var(--text3); font-weight: 500; }
-
-.btn-google {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  width: 100%;
-}
-
-/* ═══════════════════════════════════════════════
-   APP SHELL
-═══════════════════════════════════════════════ */
-#app {
-  display: none;
-  flex-direction: column;
-  min-height: 100dvh;
-}
-#app.active { display: flex; }
-
-/* ── Top Header ── */
-#top-header {
-  position: fixed; top: 0; left: 0; right: 0;
-  height: var(--header-h);
-  background: var(--glass);
-  border-bottom: 1px solid var(--glass-border);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 16px;
-  z-index: 100;
-}
-
-.header-logo {
-  font-size: 20px; font-weight: 800;
-  letter-spacing: -0.3px;
-}
-.header-logo span { color: var(--red); }
-
-.header-actions { display: flex; gap: 8px; align-items: center; }
-
-/* ── Main Content ── */
-#main-content {
-  flex: 1;
-  padding-top: var(--header-h);
-  padding-bottom: calc(var(--nav-h) + 8px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ── Bottom Navigation ── */
-#bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  height: var(--nav-h);
-  background: var(--glass);
-  border-top: 1px solid var(--glass-border);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  display: flex; align-items: center; justify-content: space-around;
-  padding: 0 8px;
-  padding-bottom: env(safe-area-inset-bottom, 0);
-  z-index: 100;
-}
-
-.nav-item {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 4px;
-  padding: 8px 4px;
-  border: none; background: transparent;
-  color: var(--text3);
-  cursor: pointer;
-  transition: color 0.2s, transform 0.15s;
-  font-family: var(--font);
-  font-size: 10px; font-weight: 500;
-  -webkit-tap-highlight-color: transparent;
-  position: relative;
-}
-.nav-item:active { transform: scale(0.88); }
-
-.nav-item.active { color: var(--red); }
-.nav-item.active svg { filter: drop-shadow(0 0 6px var(--red)); }
-
-.nav-item svg { width: 22px; height: 22px; transition: transform 0.2s; }
-
-.nav-upload-btn {
-  width: 44px; height: 44px;
-  background: linear-gradient(135deg, var(--red), #ff6b6b);
-  border-radius: 14px;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 16px rgba(255,59,48,0.4);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.nav-item:active .nav-upload-btn { transform: scale(0.9); }
-
-/* ═══════════════════════════════════════════════
-   PAGES
-═══════════════════════════════════════════════ */
-.page { display: none; animation: fadeUp 0.3s ease; }
-.page.active { display: block; }
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Category Chips ── */
-.chips-wrap {
-  display: flex; gap: 8px;
-  padding: 12px 16px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-.chip {
-  padding: 7px 16px;
-  border-radius: 100px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text2);
-  font-size: 13px; font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-.chip.active {
-  background: var(--red);
-  border-color: var(--red);
-  color: #fff;
-  box-shadow: 0 4px 16px rgba(255,59,48,0.3);
-}
-
-/* ═══════════════════════════════════════════════
-   MASONRY GRID
-═══════════════════════════════════════════════ */
-.masonry {
-  columns: 2;
-  column-gap: 10px;
-  padding: 10px;
-}
-@media (min-width: 500px) { .masonry { columns: 3; } }
-@media (min-width: 720px) { .masonry { columns: 4; } }
-
-.pin-card {
-  break-inside: avoid;
-  margin-bottom: 10px;
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  position: relative;
-  transition: transform 0.2s, box-shadow 0.2s;
-  animation: fadeIn 0.4s ease;
-}
-.pin-card:active { transform: scale(0.97); }
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-.pin-card img {
-  width: 100%;
-  height: auto;
-  display: block;
-  background: var(--bg3);
-  min-height: 120px;
-  object-fit: cover;
-  transition: transform 0.3s;
-}
-.pin-card:hover img { transform: scale(1.03); }
-
-.pin-card-body {
-  padding: 10px;
-}
-.pin-card-title {
-  font-size: 13px; font-weight: 600;
-  color: var(--text);
-  line-height: 1.3;
-  margin-bottom: 4px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-.pin-card-meta {
-  font-size: 11px; color: var(--text3);
-  display: flex; align-items: center; justify-content: space-between;
-}
-
-.pin-card-overlay {
-  position: absolute; top: 8px; right: 8px;
-  display: flex; flex-direction: column; gap: 6px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-.pin-card:hover .pin-card-overlay { opacity: 1; }
-
-.pin-action-btn {
-  width: 30px; height: 30px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(8px);
-  border: none;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  transition: transform 0.15s, background 0.15s;
-}
-.pin-action-btn:active { transform: scale(0.88); }
-.pin-action-btn.liked { background: var(--red); }
-.pin-action-btn.saved { background: var(--blue); }
-
-/* ── Like count float ── */
-.like-tag {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 11px; color: var(--text3);
-}
-
-/* ═══════════════════════════════════════════════
-   PIN DETAIL MODAL
-═══════════════════════════════════════════════ */
-#pin-modal {
-  position: fixed; inset: 0;
-  z-index: 500;
-  background: rgba(0,0,0,0.7);
-  backdrop-filter: blur(8px);
-  display: flex; align-items: flex-end;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.3s;
-}
-#pin-modal.open {
-  opacity: 1; pointer-events: all;
-}
-.pin-modal-sheet {
-  width: 100%;
-  max-height: 92dvh;
-  background: var(--bg2);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  transform: translateY(30px);
-  transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
-}
-#pin-modal.open .pin-modal-sheet { transform: translateY(0); }
-
-.pin-modal-drag {
-  width: 36px; height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  margin: 12px auto 0;
-}
-
-.pin-modal-img {
-  width: 100%;
-  max-height: 60vw;
-  object-fit: cover;
-  background: var(--bg3);
-}
-
-.pin-modal-body { padding: 20px; }
-.pin-modal-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-.pin-modal-desc { font-size: 14px; color: var(--text2); line-height: 1.6; margin-bottom: 16px; }
-.pin-modal-actions { display: flex; gap: 10px; margin-bottom: 16px; }
-.pin-modal-author {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 0;
-  border-top: 1px solid var(--border);
-}
-.avatar {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: var(--bg3);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 15px; font-weight: 700;
-  color: var(--text);
-  overflow: hidden; flex-shrink: 0;
-  border: 2px solid var(--border);
-}
-.avatar img { width: 100%; height: 100%; object-fit: cover; }
-
-/* ── Categories ── */
-.pin-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
-
-/* ═══════════════════════════════════════════════
-   SEARCH PAGE
-═══════════════════════════════════════════════ */
-.search-header {
-  padding: 12px 16px;
-  position: sticky; top: 0;
-  background: var(--bg);
-  z-index: 10;
-}
-.search-bar {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 100px;
-  padding: 10px 16px;
-  transition: border-color 0.2s;
-}
-.search-bar:focus-within { border-color: var(--blue); }
-.search-bar input {
-  flex: 1; background: transparent; border: none; outline: none;
-  color: var(--text); font-family: var(--font);
-  font-size: 15px;
-}
-.search-bar input::placeholder { color: var(--text3); }
-
-.category-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 10px; padding: 0 16px 16px;
-}
-.category-card {
-  border-radius: var(--radius);
-  padding: 20px 16px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  position: relative; overflow: hidden;
-  min-height: 90px;
-  display: flex; flex-direction: column; justify-content: flex-end;
-}
-.category-card:active { transform: scale(0.97); }
-.category-card-bg {
-  position: absolute; inset: 0;
-  background-size: cover; background-position: center;
-  opacity: 0.35;
-  filter: saturate(1.2);
-}
-.category-card-label {
-  font-size: 15px; font-weight: 700;
-  position: relative; z-index: 1;
-}
-.category-card-count {
-  font-size: 11px; color: var(--text2);
-  position: relative; z-index: 1;
-}
-
-/* ═══════════════════════════════════════════════
-   UPLOAD PAGE
-═══════════════════════════════════════════════ */
-.upload-page { padding: 16px; }
-.upload-page h2 { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
-
-.upload-drop {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius-lg);
-  padding: 40px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-  margin-bottom: 16px;
-  position: relative;
-  overflow: hidden;
-}
-.upload-drop.drag-over {
-  border-color: var(--blue);
-  background: var(--blue-dim);
-}
-.upload-drop input[type="file"] {
-  position: absolute; inset: 0; opacity: 0; cursor: pointer;
-}
-.upload-drop-icon {
-  width: 56px; height: 56px;
-  background: var(--surface);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 12px;
-}
-.upload-drop p { font-size: 14px; color: var(--text2); }
-.upload-drop p strong { color: var(--text); }
-
-.upload-preview {
-  width: 100%; max-height: 280px;
-  object-fit: cover;
-  border-radius: var(--radius);
-  margin-bottom: 16px;
-  background: var(--bg3);
-}
-.upload-video-preview {
-  width: 100%; max-height: 280px;
-  border-radius: var(--radius);
-  margin-bottom: 16px;
-  background: #000;
-}
-
-.form-group { margin-bottom: 14px; }
-.form-label {
-  display: block; font-size: 12px; font-weight: 600;
-  color: var(--text2); margin-bottom: 6px;
-  text-transform: uppercase; letter-spacing: 0.5px;
-}
-
-.select-input {
-  width: 100%;
-  padding: 13px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-family: var(--font);
-  font-size: 15px;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-
-.progress-bar {
-  height: 4px;
-  background: var(--surface);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 8px;
-}
-.progress-fill {
-  height: 100%; width: 0%;
-  background: linear-gradient(90deg, var(--blue), var(--red));
-  border-radius: 2px;
-  transition: width 0.2s;
-}
-
-/* ═══════════════════════════════════════════════
-   REELS PAGE
-═══════════════════════════════════════════════ */
-#reels-page {
-  height: calc(100dvh - var(--header-h) - var(--nav-h));
-  overflow: hidden; position: relative;
-}
-.reels-container {
-  height: 100%;
-  overflow-y: scroll;
-  scroll-snap-type: y mandatory;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-.reel-item {
-  height: calc(100dvh - var(--header-h) - var(--nav-h));
-  scroll-snap-align: start;
-  position: relative; overflow: hidden;
-  background: #000;
-}
-.reel-video {
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
-.reel-overlay {
-  position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%);
-  display: flex; flex-direction: column; justify-content: flex-end;
-  padding: 20px;
-}
-.reel-actions {
-  position: absolute; right: 16px; bottom: 100px;
-  display: flex; flex-direction: column; gap: 20px; align-items: center;
-}
-.reel-action-btn {
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
-  background: none; border: none; color: #fff; cursor: pointer;
-  font-family: var(--font); font-size: 12px; font-weight: 600;
-}
-.reel-action-btn svg { width: 28px; height: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
-
-.reel-info { flex: 1; }
-.reel-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
-.reel-author { font-size: 13px; color: rgba(255,255,255,0.75); }
-
-/* ── Empty state for reels ── */
-.reels-empty {
-  height: 100%;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 12px; color: var(--text2);
-}
-.reels-empty svg { width: 60px; height: 60px; opacity: 0.4; }
-
-/* ═══════════════════════════════════════════════
-   PROFILE PAGE
-═══════════════════════════════════════════════ */
-.profile-header {
-  padding: 24px 16px 0;
-  display: flex; flex-direction: column; align-items: center;
-  text-align: center;
-}
-.profile-avatar {
-  width: 86px; height: 86px;
-  border-radius: 50%;
-  background: var(--bg3);
-  border: 3px solid var(--red);
-  overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 32px; font-weight: 800;
-  margin-bottom: 12px;
-  position: relative;
-  cursor: pointer;
-}
-.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.avatar-edit-badge {
-  position: absolute; bottom: 0; right: 0;
-  width: 26px; height: 26px;
-  background: var(--blue);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  border: 2px solid var(--bg2);
-}
-.profile-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-.profile-email { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
-
-.profile-stats {
-  display: flex; gap: 32px; justify-content: center;
-  padding: 16px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  margin: 0 16px;
-}
-.stat-item { text-align: center; }
-.stat-num { font-size: 22px; font-weight: 800; }
-.stat-label { font-size: 11px; color: var(--text2); font-weight: 500; margin-top: 2px; }
-
-.profile-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-  padding: 0 16px;
-  margin-top: 16px;
-}
-.profile-tab {
-  flex: 1; padding: 12px 0;
-  background: none; border: none;
-  color: var(--text2);
-  font-family: var(--font); font-size: 13px; font-weight: 600;
-  cursor: pointer; border-bottom: 2px solid transparent;
-  transition: color 0.2s, border-color 0.2s;
-}
-.profile-tab.active { color: var(--red); border-bottom-color: var(--red); }
-
-/* ═══════════════════════════════════════════════
-   SETTINGS MODAL
-═══════════════════════════════════════════════ */
-#settings-modal {
-  position: fixed; inset: 0; z-index: 600;
-  background: rgba(0,0,0,0.6);
-  backdrop-filter: blur(8px);
-  display: flex; align-items: flex-end;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.3s;
-}
-#settings-modal.open { opacity: 1; pointer-events: all; }
-
-.settings-sheet {
-  width: 100%;
-  background: var(--bg2);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 20px;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
-  transform: translateY(20px);
-  transition: transform 0.3s cubic-bezier(0.34,1.2,0.64,1);
-}
-#settings-modal.open .settings-sheet { transform: translateY(0); }
-
-.settings-sheet h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
-
-.settings-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
-}
-.settings-item:last-child { border-bottom: none; }
-.settings-item-label { font-size: 15px; font-weight: 500; }
-.settings-item-desc { font-size: 12px; color: var(--text2); margin-top: 2px; }
-
-/* Toggle switch */
-.toggle {
-  width: 50px; height: 28px;
-  background: var(--border);
-  border-radius: 100px;
-  position: relative; cursor: pointer;
-  transition: background 0.25s;
-  flex-shrink: 0;
-}
-.toggle.on { background: var(--blue); }
-.toggle::after {
-  content: '';
-  position: absolute; top: 3px; left: 3px;
-  width: 22px; height: 22px;
-  background: #fff;
-  border-radius: 50%;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-  transition: transform 0.25s cubic-bezier(0.34,1.4,0.64,1);
-}
-.toggle.on::after { transform: translateX(22px); }
-
-/* ═══════════════════════════════════════════════
-   SECTION HEADERS
-═══════════════════════════════════════════════ */
-.section-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px 4px;
-}
-.section-title { font-size: 18px; font-weight: 700; }
-.section-see-all { font-size: 13px; color: var(--blue); font-weight: 600; cursor: pointer; }
-
-/* ═══════════════════════════════════════════════
-   SKELETON LOADER
-═══════════════════════════════════════════════ */
-.skeleton {
-  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 50%, var(--surface) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: var(--radius-sm);
-}
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.skeleton-card {
-  break-inside: avoid;
-  margin-bottom: 10px;
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-.skeleton-img { height: 160px; }
-.skeleton-text { height: 12px; margin: 10px; border-radius: 6px; }
-.skeleton-text.short { width: 60%; }
-
-/* ═══════════════════════════════════════════════
-   NOTIFICATION BADGE
-═══════════════════════════════════════════════ */
-.notif-dot {
-  position: absolute; top: 4px; right: 4px;
-  width: 8px; height: 8px;
-  background: var(--red);
-  border-radius: 50%;
-  border: 2px solid var(--bg);
-}
-
-/* ═══════════════════════════════════════════════
-   ANIMATIONS
-═══════════════════════════════════════════════ */
-@keyframes heartBeat {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.35); }
-  60% { transform: scale(0.9); }
-  100% { transform: scale(1); }
-}
-.heart-anim { animation: heartBeat 0.4s ease; }
-
-/* ═══════════════════════════════════════════════
-   FLOATING LABEL INPUT
-═══════════════════════════════════════════════ */
-.float-label-wrap { position: relative; }
-.float-label-wrap .input { padding-top: 20px; padding-bottom: 8px; }
-.float-label {
-  position: absolute; left: 16px; top: 50%;
-  transform: translateY(-50%);
-  font-size: 15px; color: var(--text3);
-  pointer-events: none;
-  transition: all 0.2s;
-}
-.float-label-wrap .input:focus ~ .float-label,
-.float-label-wrap .input:not(:placeholder-shown) ~ .float-label {
-  top: 8px; transform: none;
-  font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
-  color: var(--blue);
-}
-
-/* ── Pill badge on nav ── */
-.nav-badge {
-  position: absolute; top: 3px; right: calc(50% - 16px);
-  min-width: 16px; height: 16px;
-  background: var(--red);
-  border-radius: 8px;
-  font-size: 9px; font-weight: 700;
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0 4px;
-  pointer-events: none;
-}
-
-/* ── Pull to refresh indicator ── */
-.ptr-indicator {
-  display: flex; align-items: center; justify-content: center;
-  height: 0; overflow: hidden;
-  transition: height 0.2s;
-  color: var(--text2); font-size: 13px; gap: 8px;
-}
-
-/* ── Textarea ── */
-textarea.input {
-  resize: none; min-height: 90px;
-  line-height: 1.5;
-}
-
-/* ── Divider ── */
-.hr { height: 1px; background: var(--border); margin: 12px 0; }
-
-</style>
-</head>
-<body data-theme="dark">
-
-<!-- ════ PAGE LOADER ════ -->
-<div id="page-loader" class="page-loader">
-  <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
-    <rect width="60" height="60" rx="18" fill="#ff3b30"/>
-    <path d="M18 40 L30 20 L42 40" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    <circle cx="30" cy="36" r="3" fill="white"/>
-  </svg>
-  <div class="spinner"></div>
-</div>
-
-<!-- ════ AUTH SCREEN ════ -->
-<div id="auth-screen" class="hidden">
-  <div class="auth-logo">
-    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-      <path d="M10 30 L20 10 L30 30" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-      <circle cx="20" cy="26" r="2.5" fill="white"/>
-    </svg>
-  </div>
-  <h1 class="auth-title">Kage<span style="color:var(--red)">Scroll</span></h1>
-  <p class="auth-subtitle">Discover. Save. Create.</p>
-
-  <div class="auth-card">
-    <!-- Tabs -->
-    <div class="auth-tabs">
-      <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
-      <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
-      <button class="auth-tab" onclick="switchAuthTab('phone')">Phone</button>
-    </div>
-
-    <!-- Login Form -->
-    <div id="auth-login" class="auth-form">
-      <div class="float-label-wrap">
-        <input class="input" type="email" id="login-email" placeholder=" " autocomplete="email"/>
-        <span class="float-label">Email</span>
-      </div>
-      <div class="float-label-wrap">
-        <input class="input" type="password" id="login-pass" placeholder=" " autocomplete="current-password"/>
-        <span class="float-label">Password</span>
-      </div>
-      <button class="btn btn-primary w-full" onclick="emailLogin()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10,17 15,12 10,7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-        Login
-      </button>
-    </div>
-
-    <!-- Register Form -->
-    <div id="auth-register" class="auth-form hidden">
-      <div class="float-label-wrap">
-        <input class="input" type="text" id="reg-name" placeholder=" " autocomplete="name"/>
-        <span class="float-label">Display Name</span>
-      </div>
-      <div class="float-label-wrap">
-        <input class="input" type="email" id="reg-email" placeholder=" " autocomplete="email"/>
-        <span class="float-label">Email</span>
-      </div>
-      <div class="float-label-wrap">
-        <input class="input" type="password" id="reg-pass" placeholder=" " autocomplete="new-password"/>
-        <span class="float-label">Password</span>
-      </div>
-      <button class="btn btn-primary w-full" onclick="emailRegister()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-        Create Account
-      </button>
-    </div>
-
-    <!-- Phone Form -->
-    <div id="auth-phone" class="auth-form hidden">
-      <div id="recaptcha-container"></div>
-      <div class="float-label-wrap">
-        <input class="input" type="tel" id="phone-num" placeholder=" " autocomplete="tel"/>
-        <span class="float-label">+1 Phone Number</span>
-      </div>
-      <button class="btn btn-primary w-full" onclick="sendOTP()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.1 4.1 19.79 19.79 0 011.03 4 2 2 0 013 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-        Send OTP
-      </button>
-      <div id="otp-section" class="hidden auth-form">
-        <div class="float-label-wrap">
-          <input class="input" type="number" id="otp-code" placeholder=" " inputmode="numeric"/>
-          <span class="float-label">6-digit OTP</span>
-        </div>
-        <button class="btn btn-blue w-full" onclick="verifyOTP()">Verify OTP</button>
-      </div>
-    </div>
-
-    <!-- Divider + Google -->
-    <div class="divider"><span>or</span></div>
-    <button class="btn btn-google w-full" onclick="googleLogin()">
-      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-      Continue with Google
-    </button>
-  </div>
-</div>
-
-<!-- ════ APP SHELL ════ -->
-<div id="app">
-  <!-- Top Header -->
-  <header id="top-header">
-    <div class="header-logo">Kage<span>Scroll</span></div>
-    <div class="header-actions">
-      <button class="btn-icon" id="notif-btn" onclick="showToast('Notifications coming soon')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-      </button>
-      <button class="btn-icon" onclick="openSettings()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      </button>
-    </div>
-  </header>
-
-  <!-- Main Content -->
-  <main id="main-content">
-
-    <!-- ── HOME PAGE ── -->
-    <section id="page-home" class="page active">
-      <div class="chips-wrap" id="category-chips"></div>
-      <div id="home-recommended" class="hidden">
-        <div class="section-header">
-          <span class="section-title">For You</span>
-        </div>
-        <div class="masonry" id="recommended-grid"></div>
-      </div>
-      <div class="section-header">
-        <span class="section-title">Discover</span>
-      </div>
-      <div class="masonry" id="home-grid"></div>
-    </section>
-
-    <!-- ── SEARCH PAGE ── -->
-    <section id="page-search" class="page">
-      <div class="search-header">
-        <div class="search-bar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="search" id="search-input" placeholder="Search pins, topics..." oninput="handleSearch(this.value)"/>
-          <button class="btn-icon" style="width:28px;height:28px;" onclick="clearSearch()" id="search-clear" style="display:none">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-      </div>
-      <div id="search-results-wrap" class="hidden">
-        <div class="masonry" id="search-grid"></div>
-      </div>
-      <div id="category-browse">
-        <p style="padding:4px 16px 12px;font-size:13px;color:var(--text2);font-weight:500;">Browse Categories</p>
-        <div class="category-grid" id="category-grid"></div>
-      </div>
-    </section>
-
-    <!-- ── UPLOAD PAGE ── -->
-    <section id="page-upload" class="page">
-      <div class="upload-page">
-        <h2>New Pin</h2>
-
-        <!-- Type toggle -->
-        <div class="auth-tabs" style="margin-bottom:16px;">
-          <button class="auth-tab active" onclick="switchUploadType('image')">Image</button>
-          <button class="auth-tab" onclick="switchUploadType('video')">Video</button>
-        </div>
-
-        <!-- Drop zone -->
-        <div class="upload-drop" id="upload-drop" onclick="document.getElementById('file-input').click()">
-          <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(this)"/>
-          <div class="upload-drop-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
-          </div>
-          <p><strong>Tap to upload</strong></p>
-          <p style="font-size:12px;margin-top:4px;">PNG, JPG, MP4 · Max 20MB</p>
-        </div>
-
-        <img id="upload-preview" class="upload-preview hidden" alt="preview"/>
-        <video id="upload-video-preview" class="upload-video-preview hidden" controls playsinline></video>
-
-        <div class="form-group">
-          <label class="form-label">Title *</label>
-          <input class="input" type="text" id="pin-title" placeholder="Give your pin a title"/>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea class="input" id="pin-desc" placeholder="Tell the story behind this pin…"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Category</label>
-          <select class="select-input" id="pin-category">
-            <option value="anime">Anime</option>
-            <option value="art">Art</option>
-            <option value="tech">Tech</option>
-            <option value="nature">Nature</option>
-            <option value="photography">Photography</option>
-            <option value="fashion">Fashion</option>
-            <option value="food">Food</option>
-            <option value="travel">Travel</option>
-            <option value="music">Music</option>
-            <option value="gaming">Gaming</option>
-          </select>
-        </div>
-
-        <div id="upload-progress-wrap" class="hidden">
-          <div class="progress-bar"><div class="progress-fill" id="upload-progress-fill"></div></div>
-          <p style="font-size:12px;color:var(--text2);margin-top:6px;" id="upload-progress-text">Uploading...</p>
-        </div>
-
-        <button class="btn btn-primary w-full" style="margin-top:8px;" id="upload-btn" onclick="uploadPin()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
-          Upload Pin
-        </button>
-      </div>
-    </section>
-
-    <!-- ── REELS PAGE ── -->
-    <section id="page-reels" class="page" style="padding:0;">
-      <div id="reels-page">
-        <div class="reels-container" id="reels-container"></div>
-      </div>
-    </section>
-
-    <!-- ── PROFILE PAGE ── -->
-    <section id="page-profile" class="page">
-      <div class="profile-header">
-        <div class="profile-avatar" id="profile-avatar-wrap" onclick="changeAvatar()">
-          <span id="profile-avatar-text">?</span>
-          <img id="profile-avatar-img" src="" alt="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;"/>
-          <div class="avatar-edit-badge">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-          </div>
-        </div>
-        <div class="profile-name" id="profile-name-display">—</div>
-        <div class="profile-email" id="profile-email-display">—</div>
-        <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(this)"/>
-      </div>
-
-      <div class="profile-stats">
-        <div class="stat-item">
-          <div class="stat-num" id="stat-pins">0</div>
-          <div class="stat-label">Pins</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-num" id="stat-saved">0</div>
-          <div class="stat-label">Saved</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-num" id="stat-likes">0</div>
-          <div class="stat-label">Likes</div>
-        </div>
-      </div>
-
-      <div class="profile-tabs">
-        <button class="profile-tab active" onclick="switchProfileTab('mine')">My Pins</button>
-        <button class="profile-tab" onclick="switchProfileTab('saved')">Saved</button>
-      </div>
-
-      <div class="masonry" style="margin-top:12px;" id="profile-grid"></div>
-    </section>
-
-  </main>
-
-  <!-- Bottom Navigation -->
-  <nav id="bottom-nav">
-    <button class="nav-item active" data-tab="home" onclick="switchTab('home')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Home</span>
-    </button>
-    <button class="nav-item" data-tab="search" onclick="switchTab('search')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <span>Search</span>
-    </button>
-    <button class="nav-item" data-tab="upload" onclick="switchTab('upload')">
-      <div class="nav-upload-btn">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </div>
-      <span>Create</span>
-    </button>
-    <button class="nav-item" data-tab="reels" onclick="switchTab('reels')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-      <span>Reels</span>
-    </button>
-    <button class="nav-item" data-tab="profile" onclick="switchTab('profile')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Profile</span>
-    </button>
-  </nav>
-</div>
-
-<!-- ════ PIN DETAIL MODAL ════ -->
-<div id="pin-modal">
-  <div class="pin-modal-sheet">
-    <div class="pin-modal-drag"></div>
-    <img id="pin-modal-img" class="pin-modal-img" src="" alt="" loading="lazy"/>
-    <video id="pin-modal-video" class="pin-modal-img hidden" controls playsinline></video>
-    <div class="pin-modal-body">
-      <h2 class="pin-modal-title" id="pin-modal-title"></h2>
-      <p class="pin-modal-desc" id="pin-modal-desc"></p>
-      <div class="pin-modal-actions">
-        <button class="btn btn-primary flex-1" id="pin-modal-save-btn" onclick="savePinFromModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
-          Save
-        </button>
-        <button class="btn btn-secondary flex-1" id="pin-modal-like-btn" onclick="likePinFromModal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-          <span id="pin-modal-likes">0</span>
-        </button>
-        <button class="btn-icon" onclick="closePinModal()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="pin-modal-author" id="pin-modal-author"></div>
-      <div class="pin-tags" id="pin-modal-tags"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ════ SETTINGS MODAL ════ -->
-<div id="settings-modal">
-  <div class="settings-sheet">
-    <h3>Settings</h3>
-    <div class="settings-item">
-      <div>
-        <div class="settings-item-label">Dark Mode</div>
-        <div class="settings-item-desc">Switch between light and dark theme</div>
-      </div>
-      <div class="toggle on" id="theme-toggle" onclick="toggleTheme()"></div>
-    </div>
-    <div class="settings-item">
-      <div>
-        <div class="settings-item-label">Notifications</div>
-        <div class="settings-item-desc">Push notifications for activity</div>
-      </div>
-      <div class="toggle" id="notif-toggle" onclick="toggleNotif(this)"></div>
-    </div>
-    <div class="hr"></div>
-    <div class="settings-item" style="border:none;">
-      <div>
-        <div class="settings-item-label">Account</div>
-        <div class="settings-item-desc" id="settings-email-display">—</div>
-      </div>
-    </div>
-    <button class="btn btn-ghost w-full" style="margin-top:8px;color:var(--red);border-color:var(--red);" onclick="logout()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Sign Out
-    </button>
-  </div>
-</div>
-
-<!-- ════ TOAST ════ -->
-<div id="toast"></div>
-
-<script>
-/* ═══════════════════════════════════════════════
-   APP STATE
-═══════════════════════════════════════════════ */
-const State = {
+// ─── SUPABASE CONFIG ───
+const SUPABASE_URL = "https://namkldbanhhlraejdghj.supabase.co";
+const SUPABASE_KEY = "sb_publishable_VEavvsGd4t8qzthwRZ7w-w_bngJe3qu";
+const SUPABASE_BUCKET = "pins";
+
+// ─── PEXELS CONFIG ───
+const PEXELS_KEY = "uE1N422f9fHbfOqz8ncMO997r5Ct8XJ7HsKyRMoZhH0hzbJWggrsdjVh";
+const PEXELS_API = "https://api.pexels.com/v1";
+const PEXELS_VIDEO_API = "https://api.pexels.com/videos";
+
+// ─── INIT FIREBASE ───
+let app, auth, db, messaging;
+let fbReady = false;
+
+try {
+  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    try {
+      messaging = getMessaging(app);
+    } catch(e) { messaging = null; }
+    fbReady = true;
+  }
+} catch(e) {
+  console.warn('Firebase init skipped — add config');
+}
+
+// ─── STATE ───
+const state = {
   user: null,
   currentTab: 'home',
+  currentProfileTab: 'my-pins',
   currentCategory: 'all',
-  pins: [],
-  reels: [],
+  searchQuery: '',
+  homePhotos: [],
+  homePage: 1,
+  searchPage: 1,
+  searchPhotos: [],
+  reelsVideos: [],
+  profilePins: [],
   savedPins: [],
   likedPins: [],
-  viewHistory: [],
-  currentPinId: null,
-  uploadType: 'image',
-  uploadFile: null,
-  profileTab: 'mine',
-  searchTimeout: null,
+  likes: JSON.parse(localStorage.getItem('ks_likes') || '{}'),
+  saves: JSON.parse(localStorage.getItem('ks_saves') || '{}'),
+  homeLoading: false,
+  searchLoading: false,
+  reelsLoaded: false,
+  homeFullyLoaded: false,
+  searchFullyLoaded: false,
+  activePinData: null,
   recaptchaVerifier: null,
   confirmationResult: null,
+  darkMode: localStorage.getItem('ks_theme') !== 'light',
+  autoplay: localStorage.getItem('ks_autoplay') !== 'false',
+  viewHistory: JSON.parse(localStorage.getItem('ks_history') || '[]'),
 };
 
-const CATEGORIES = ['all','anime','art','tech','nature','photography','fashion','food','travel','music','gaming'];
-const CAT_COLORS = {
-  anime:'#ff3b30', art:'#ff9f0a', tech:'#007aff', nature:'#34c759',
-  photography:'#5e5ce6', fashion:'#ff375f', food:'#ff9f0a',
-  travel:'#30b0c7', music:'#bf5af2', gaming:'#ff6b35'
+// ─── SUPABASE CLIENT ───
+const supabaseClient = {
+  async upload(fileName, file, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}/${encodeURIComponent(fileName)}`);
+      xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_KEY}`);
+      xhr.setRequestHeader('apikey', SUPABASE_KEY);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) onProgress(Math.round(e.loaded / e.total * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ data: JSON.parse(xhr.responseText), error: null });
+        } else {
+          reject({ data: null, error: xhr.responseText });
+        }
+      };
+      xhr.onerror = () => reject({ data: null, error: 'Network error' });
+      xhr.send(file);
+    });
+  },
+  getPublicUrl(fileName) {
+    return `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_BUCKET}/${encodeURIComponent(fileName)}`;
+  }
 };
 
-/* Demo pins for initial content (fallback when Firebase not configured) */
-const DEMO_PINS = [
-  { id:'d1', title:'Neon City Nights', desc:'A cyberpunk cityscape glowing under neon lights.', category:'art', url:'https://picsum.photos/seed/neon1/400/560', type:'image', likes:142, author:'ShadowArtist', authorId:'demo1', tags:['art','neon','city'] },
-  { id:'d2', title:'Anime Warrior', desc:'Epic warrior standing atop the ruins.', category:'anime', url:'https://picsum.photos/seed/anime1/400/480', type:'image', likes:89, author:'AnimeKageX', authorId:'demo2', tags:['anime','warrior'] },
-  { id:'d3', title:'Mountain Sunrise', desc:'Golden hour over misty mountains.', category:'nature', url:'https://picsum.photos/seed/mount1/400/600', type:'image', likes:233, author:'NatureLens', authorId:'demo3', tags:['nature','sunrise'] },
-  { id:'d4', title:'Tech Abstract', desc:'Visualizing data in a beautiful way.', category:'tech', url:'https://picsum.photos/seed/tech1/400/400', type:'image', likes:67, author:'DevArtist', authorId:'demo4', tags:['tech','abstract'] },
-  { id:'d5', title:'Street Fashion', desc:'Urban style meets avant-garde.', category:'fashion', url:'https://picsum.photos/seed/fash1/400/520', type:'image', likes:312, author:'StyleKing', authorId:'demo5', tags:['fashion','urban'] },
-  { id:'d6', title:'Ramen Bowl', desc:'Perfect bowl of tonkotsu ramen.', category:'food', url:'https://picsum.photos/seed/food1/400/440', type:'image', likes:198, author:'FoodieVibes', authorId:'demo6', tags:['food','ramen'] },
-  { id:'d7', title:'Tokyo Streets', desc:'Rainy evening in Shibuya crossing.', category:'travel', url:'https://picsum.photos/seed/tok1/400/580', type:'image', likes:445, author:'WanderlustX', authorId:'demo7', tags:['travel','tokyo'] },
-  { id:'d8', title:'Synthwave Aesthetic', desc:'80s inspired retrowave visuals.', category:'art', url:'https://picsum.photos/seed/synth1/400/360', type:'image', likes:176, author:'RetroWave', authorId:'demo8', tags:['art','synthwave'] },
-  { id:'d9', title:'Lo-fi Study Vibes', desc:'Cozy corner for deep focus sessions.', category:'music', url:'https://picsum.photos/seed/lofi1/400/500', type:'image', likes:521, author:'LofiBeats', authorId:'demo9', tags:['music','lofi'] },
-  { id:'d10', title:'Pixel Art Village', desc:'8-bit retro pixel art landscape.', category:'gaming', url:'https://picsum.photos/seed/game1/400/420', type:'image', likes:88, author:'PixelDev', authorId:'demo10', tags:['gaming','pixel'] },
-  { id:'d11', title:'Dragon Spirit', desc:'A legendary dragon emerges from clouds.', category:'anime', url:'https://picsum.photos/seed/drag1/400/600', type:'image', likes:301, author:'MythArt', authorId:'demo11', tags:['anime','dragon'] },
-  { id:'d12', title:'Minimal Workspace', desc:'Clean desk setup for productivity.', category:'tech', url:'https://picsum.photos/seed/desk1/400/380', type:'image', likes:159, author:'SetupGuru', authorId:'demo12', tags:['tech','workspace'] },
-];
-
-/* ═══════════════════════════════════════════════
-   FIREBASE READY GATE
-═══════════════════════════════════════════════ */
-function waitForFb(cb) {
-  if (window._fbReady) cb();
-  else document.addEventListener('fbReady', cb, { once: true });
+// ─── UTILITIES ───
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 3000);
 }
 
-/* ═══════════════════════════════════════════════
-   INIT
-═══════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
-  waitForFb(initApp);
-});
+function debounce(fn, delay) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
 
-function initApp() {
-  const { auth, onAuthStateChanged } = _fb;
+function isPexelsUrl(url) {
+  return url && (url.includes('pexels.com') || url.includes('pexels-'));
+}
 
-  // Restore theme
-  const savedTheme = localStorage.getItem('ks-theme') || 'dark';
-  document.body.dataset.theme = savedTheme;
+function setTheme() {
+  if (state.darkMode) {
+    document.documentElement.classList.remove('light');
+    localStorage.setItem('ks_theme', 'dark');
+  } else {
+    document.documentElement.classList.add('light');
+    localStorage.setItem('ks_theme', 'light');
+  }
   const toggle = document.getElementById('theme-toggle');
-  if (toggle) toggle.classList.toggle('on', savedTheme === 'dark');
-
-  onAuthStateChanged(auth, user => {
-    document.getElementById('page-loader').style.display = 'none';
-    if (user) {
-      State.user = user;
-      showApp();
-    } else {
-      showAuth();
-    }
-  });
-
-  // Close modals on backdrop tap
-  document.getElementById('pin-modal').addEventListener('click', e => {
-    if (e.target === document.getElementById('pin-modal')) closePinModal();
-  });
-  document.getElementById('settings-modal').addEventListener('click', e => {
-    if (e.target === document.getElementById('settings-modal')) closeSettings();
-  });
+  if (toggle) toggle.classList.toggle('on', state.darkMode);
 }
 
-/* ═══════════════════════════════════════════════
-   AUTH FUNCTIONS
-═══════════════════════════════════════════════ */
-function showAuth() {
-  document.getElementById('auth-screen').classList.remove('hidden');
-  document.getElementById('app').classList.remove('active');
+function trackView(category) {
+  if (!category) return;
+  state.viewHistory.push(category);
+  if (state.viewHistory.length > 100) state.viewHistory.shift();
+  localStorage.setItem('ks_history', JSON.stringify(state.viewHistory));
 }
 
-function showApp() {
-  document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('app').classList.add('active');
-  updateProfileUI();
-  buildCategoryChips();
-  buildCategoryGrid();
-  loadPins();
-  loadReels();
-  loadUserData();
+function getRecommendedCategory() {
+  if (!state.viewHistory.length) return 'anime';
+  const counts = {};
+  state.viewHistory.forEach(c => counts[c] = (counts[c] || 0) + 1);
+  return Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
 }
 
-function switchAuthTab(tab) {
-  ['login','register','phone'].forEach(t => {
-    document.getElementById(`auth-${t}`).classList.add('hidden');
-    document.querySelectorAll('.auth-tab')[['login','register','phone'].indexOf(t)].classList.remove('active');
-  });
-  document.getElementById(`auth-${tab}`).classList.remove('hidden');
-  document.querySelectorAll('.auth-tab')[['login','register','phone'].indexOf(tab)].classList.add('active');
+// ─── PEXELS ───
+async function fetchPexelsPhotos(query, page = 1, perPage = 20) {
+  const url = query
+    ? `${PEXELS_API}/search?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`
+    : `${PEXELS_API}/curated?page=${page}&per_page=${perPage}`;
+  const res = await fetch(url, { headers: { Authorization: PEXELS_KEY } });
+  if (!res.ok) throw new Error('Pexels API error');
+  return res.json();
 }
 
-async function emailLogin() {
-  const { auth, signInWithEmailAndPassword } = _fb;
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  if (!email || !pass) { showToast('Please fill all fields'); return; }
-  try {
-    await signInWithEmailAndPassword(auth, email, pass);
-    showToast('Welcome back!');
-  } catch(e) { showToast(e.message.replace('Firebase: ','').substring(0,60)); }
+async function fetchPexelsVideos(query, page = 1, perPage = 10) {
+  const url = query
+    ? `${PEXELS_VIDEO_API}/search?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}`
+    : `${PEXELS_VIDEO_API}/popular?page=${page}&per_page=${perPage}`;
+  const res = await fetch(url, { headers: { Authorization: PEXELS_KEY } });
+  if (!res.ok) throw new Error('Pexels Video API error');
+  return res.json();
 }
 
-async function emailRegister() {
-  const { auth, createUserWithEmailAndPassword, updateProfile } = _fb;
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const pass = document.getElementById('reg-pass').value;
-  if (!name || !email || !pass) { showToast('Please fill all fields'); return; }
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(cred.user, { displayName: name });
-    showToast('Account created!');
-  } catch(e) { showToast(e.message.replace('Firebase: ','').substring(0,60)); }
+function pexelsPhotoToPin(photo) {
+  return {
+    id: `pexels_${photo.id}`,
+    title: photo.alt || 'Untitled',
+    description: `Photo by ${photo.photographer}`,
+    imageUrl: photo.src.large2x || photo.src.large,
+    thumbUrl: photo.src.medium,
+    type: 'image',
+    source: 'pexels',
+    category: 'trending',
+    likes: photo.liked ? 1 : 0,
+    saves: 0,
+    pexelsId: photo.id,
+  };
 }
 
-async function googleLogin() {
-  const { auth, GoogleAuthProvider, signInWithPopup } = _fb;
-  try {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-    showToast('Welcome!');
-  } catch(e) { showToast(e.message.replace('Firebase: ','').substring(0,60)); }
+function pexelsVideoToReel(video) {
+  const file = video.video_files.find(f => f.quality === 'hd' || f.quality === 'sd') || video.video_files[0];
+  return {
+    id: `pexels_vid_${video.id}`,
+    title: video.url ? `Video by ${video.user.name}` : 'Reel',
+    description: '',
+    videoUrl: file ? file.link : '',
+    thumbUrl: video.image,
+    type: 'video',
+    source: 'pexels',
+    category: 'reels',
+    duration: video.duration,
+    user: video.user.name,
+  };
 }
 
-async function sendOTP() {
-  const { auth, signInWithPhoneNumber, RecaptchaVerifier } = _fb;
-  const phone = document.getElementById('phone-num').value.trim();
-  if (!phone) { showToast('Enter phone number'); return; }
-  try {
-    if (!State.recaptchaVerifier) {
-      State.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
-    }
-    State.confirmationResult = await signInWithPhoneNumber(auth, phone, State.recaptchaVerifier);
-    document.getElementById('otp-section').classList.remove('hidden');
-    showToast('OTP sent!');
-  } catch(e) { showToast(e.message.replace('Firebase: ','').substring(0,60)); }
-}
+// ─── RENDER PIN CARD ───
+function renderPinCard(pin, container) {
+  if (!pin || !pin.imageUrl) return;
+  const item = document.createElement('div');
+  item.className = 'masonry-item';
+  item.dataset.pinId = pin.id;
+  item.style.animationDelay = `${Math.random() * 0.2}s`;
 
-async function verifyOTP() {
-  const code = document.getElementById('otp-code').value.trim();
-  if (!State.confirmationResult) { showToast('Request OTP first'); return; }
-  try {
-    await State.confirmationResult.confirm(code);
-    showToast('Phone verified!');
-  } catch(e) { showToast('Invalid OTP'); }
-}
-
-async function logout() {
-  const { auth, signOut } = _fb;
-  await signOut(auth);
-  closeSettings();
-  State.user = null;
-  showToast('Signed out');
-}
-
-/* ═══════════════════════════════════════════════
-   NAVIGATION
-═══════════════════════════════════════════════ */
-function switchTab(tab) {
-  State.currentTab = tab;
-  document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.tab === tab);
-  });
-  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-  document.getElementById(`page-${tab}`).classList.add('active');
-
-  if (tab === 'reels') startReelAutoplay();
-  if (tab === 'profile') loadProfilePins();
-}
-
-/* ═══════════════════════════════════════════════
-   CATEGORY CHIPS
-═══════════════════════════════════════════════ */
-function buildCategoryChips() {
-  const wrap = document.getElementById('category-chips');
-  wrap.innerHTML = CATEGORIES.map(c =>
-    `<button class="chip ${c==='all'?'active':''}" onclick="filterCategory('${c}')">${cap(c)}</button>`
-  ).join('');
-}
-
-function buildCategoryGrid() {
-  const grid = document.getElementById('category-grid');
-  const cats = CATEGORIES.filter(c => c !== 'all');
-  grid.innerHTML = cats.map(c => `
-    <div class="category-card" onclick="searchByCategory('${c}')">
-      <div class="category-card-bg" style="background:${CAT_COLORS[c]||'#888'};opacity:0.25;"></div>
-      <div class="category-card-label">${cap(c)}</div>
-      <div class="category-card-count">${Math.floor(Math.random()*200+20)} pins</div>
-    </div>`
-  ).join('');
-}
-
-function filterCategory(cat) {
-  State.currentCategory = cat;
-  document.querySelectorAll('.chip').forEach(el => {
-    el.classList.toggle('active', el.textContent.toLowerCase() === cat);
-  });
-  renderHomeGrid(cat === 'all' ? State.pins : State.pins.filter(p => p.category === cat));
-}
-
-function searchByCategory(cat) {
-  switchTab('search');
-  document.getElementById('search-input').value = cat;
-  handleSearch(cat);
-}
-
-/* ═══════════════════════════════════════════════
-   PINS LOADING
-═══════════════════════════════════════════════ */
-async function loadPins() {
-  renderSkeletons('home-grid', 8);
-
-  try {
-    const { db, collection, getDocs, orderBy, query, limit } = _fb;
-    const q = query(collection(db, 'pins'), orderBy('createdAt', 'desc'), limit(50));
-    const snap = await getDocs(q);
-    const pins = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    if (pins.length > 0) {
-      State.pins = pins;
-    } else {
-      State.pins = DEMO_PINS;
-    }
-  } catch(e) {
-    State.pins = DEMO_PINS;
-  }
-
-  renderHomeGrid(State.pins);
-  renderRecommended();
-}
-
-async function loadReels() {
-  try {
-    const { db, collection, getDocs, query, where, limit } = _fb;
-    const q = query(collection(db, 'pins'), where('type','==','video'), limit(20));
-    const snap = await getDocs(q);
-    State.reels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch(e) { State.reels = []; }
-  renderReels();
-}
-
-async function loadUserData() {
-  if (!State.user) return;
-  try {
-    const { db, doc, getDoc } = _fb;
-    const userDoc = await getDoc(doc(db, 'users', State.user.uid));
-    if (userDoc.exists()) {
-      const data = userDoc.data();
-      State.savedPins = data.saved || [];
-      State.likedPins = data.liked || [];
-    }
-  } catch(e) {}
-}
-
-/* ═══════════════════════════════════════════════
-   RENDER HOME GRID
-═══════════════════════════════════════════════ */
-function renderHomeGrid(pins) {
-  const grid = document.getElementById('home-grid');
-  if (!pins.length) {
-    grid.innerHTML = `<div style="padding:40px 16px;text-align:center;color:var(--text2)">No pins found</div>`;
-    return;
-  }
-  grid.innerHTML = pins.map(p => pinCardHTML(p)).join('');
-}
-
-function renderRecommended() {
-  if (!State.viewHistory.length) return;
-  const cats = [...new Set(State.viewHistory.map(id => {
-    const p = State.pins.find(x => x.id === id);
-    return p ? p.category : null;
-  }).filter(Boolean))];
-  const recs = State.pins.filter(p => cats.includes(p.category)).slice(0, 6);
-  if (!recs.length) return;
-  document.getElementById('home-recommended').classList.remove('hidden');
-  document.getElementById('recommended-grid').innerHTML = recs.map(p => pinCardHTML(p)).join('');
-}
-
-function pinCardHTML(pin) {
-  const liked = State.likedPins.includes(pin.id);
-  const saved = State.savedPins.includes(pin.id);
-  const isVideo = pin.type === 'video';
-  return `
-  <div class="pin-card" onclick="openPin('${pin.id}')">
-    ${isVideo
-      ? `<div style="background:#000;aspect-ratio:9/16;display:flex;align-items:center;justify-content:center;">
-           <svg width="40" height="40" viewBox="0 0 24 24" fill="white" opacity="0.7"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-         </div>`
-      : `<img src="${pin.url}" alt="${pin.title}" loading="lazy" onerror="this.src='https://picsum.photos/seed/${pin.id}/400/300'"/>`
-    }
-    <div class="pin-card-body">
-      <div class="pin-card-title">${pin.title}</div>
-      <div class="pin-card-meta">
-        <span>${pin.author || 'Unknown'}</span>
-        <span class="like-tag">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="${liked?'var(--red)':'none'}" stroke="var(--red)" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-          ${pin.likes||0}
-        </span>
-      </div>
-    </div>
-  </div>`;
-}
-
-/* ── Skeletons ── */
-function renderSkeletons(gridId, count) {
-  const grid = document.getElementById(gridId);
-  if (!grid) return;
-  grid.innerHTML = Array(count).fill('').map(() => `
-    <div class="skeleton-card">
-      <div class="skeleton skeleton-img" style="height:${120+Math.random()*120|0}px"></div>
-      <div class="skeleton skeleton-text" style="margin:10px;height:12px;border-radius:6px;"></div>
-      <div class="skeleton skeleton-text short" style="margin:6px 10px 10px;height:10px;border-radius:6px;width:50%;"></div>
-    </div>`).join('');
-}
-
-/* ═══════════════════════════════════════════════
-   PIN MODAL
-═══════════════════════════════════════════════ */
-function openPin(pinId) {
-  const pin = State.pins.find(p => p.id === pinId) || DEMO_PINS.find(p => p.id === pinId);
-  if (!pin) return;
-
-  State.currentPinId = pinId;
-  if (!State.viewHistory.includes(pinId)) State.viewHistory.unshift(pinId);
-  if (State.viewHistory.length > 20) State.viewHistory.pop();
-
-  const modal = document.getElementById('pin-modal');
-  const img = document.getElementById('pin-modal-img');
-  const vid = document.getElementById('pin-modal-video');
+  const isLiked = !!state.likes[pin.id];
+  const isSaved = !!state.saves[pin.id];
 
   if (pin.type === 'video') {
+    item.innerHTML = `
+      <div style="position:relative;">
+        <img src="${pin.thumbUrl || pin.imageUrl}" loading="lazy" style="width:100%;display:block;border-radius:${pin.imageUrl ? '0' : '14px'};">
+        <div class="video-badge">▶ Video</div>
+      </div>
+      <div class="pin-overlay">
+        <div class="pin-title">${pin.title}</div>
+        <div class="pin-actions-row">
+          <button class="pin-action-btn ${isLiked ? 'liked' : ''}" data-action="like" data-id="${pin.id}" aria-label="Like">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+          <button class="pin-action-btn ${isSaved ? 'saved' : ''}" data-action="save" data-id="${pin.id}" aria-label="Save">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>`;
+  } else {
+    item.innerHTML = `
+      <img src="${pin.thumbUrl || pin.imageUrl}" loading="lazy" alt="${pin.title}" style="border-radius:14px;">
+      <div class="pin-overlay">
+        <div class="pin-title">${pin.title}</div>
+        <div class="pin-actions-row">
+          <button class="pin-action-btn ${isLiked ? 'liked' : ''}" data-action="like" data-id="${pin.id}" aria-label="Like">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+          <button class="pin-action-btn ${isSaved ? 'saved' : ''}" data-action="save" data-id="${pin.id}" aria-label="Save">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>`;
+  }
+
+  // Reveal overlay on mobile touch
+  item.addEventListener('touchstart', () => {
+    item.querySelectorAll('.pin-overlay').forEach(o => o.style.opacity = '1');
+  }, { passive: true });
+  item.addEventListener('touchend', () => {
+    setTimeout(() => item.querySelectorAll('.pin-overlay').forEach(o => o.style.opacity = ''), 1500);
+  }, { passive: true });
+
+  item.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (btn) {
+      e.stopPropagation();
+      handlePinAction(btn.dataset.action, pin, btn);
+    } else {
+      openPinDetail(pin);
+    }
+  });
+
+  container.appendChild(item);
+  return item;
+}
+
+function renderSkeletons(container, count = 8) {
+  container.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const h = 120 + Math.random() * 160;
+    const el = document.createElement('div');
+    el.className = 'skeleton-item skeleton';
+    el.style.height = `${h}px`;
+    container.appendChild(el);
+  }
+}
+
+// ─── HOME FEED ───
+async function loadHome(reset = false) {
+  if (state.homeLoading || (state.homeFullyLoaded && !reset)) return;
+  state.homeLoading = true;
+  const grid = document.getElementById('home-grid');
+  const spinner = document.getElementById('home-spinner');
+
+  if (reset) {
+    state.homePage = 1;
+    state.homePhotos = [];
+    state.homeFullyLoaded = false;
+    renderSkeletons(grid, 8);
+  } else {
+    spinner.classList.remove('hidden');
+  }
+
+  try {
+    const recommended = getRecommendedCategory();
+    const queries = [recommended, 'anime', 'art', 'nature'];
+    const q = queries[Math.floor(Math.random() * queries.length)];
+    const data = await fetchPexelsPhotos(q, state.homePage, 20);
+
+    if (reset) grid.innerHTML = '';
+
+    if (!data.photos || data.photos.length === 0) {
+      state.homeFullyLoaded = true;
+    } else {
+      data.photos.forEach(p => {
+        const pin = pexelsPhotoToPin(p);
+        pin.category = q;
+        state.homePhotos.push(pin);
+        renderPinCard(pin, grid);
+      });
+      state.homePage++;
+      if (state.homePage > (data.total_results / 20)) state.homeFullyLoaded = true;
+    }
+
+    // Load from Firestore if available
+    if (fbReady && db) {
+      try {
+        const q2 = query(collection(db, 'pins'), orderBy('createdAt', 'desc'), limit(10));
+        const snap = await getDocs(q2);
+        snap.forEach(d => {
+          const pin = { id: d.id, ...d.data() };
+          if (!state.homePhotos.find(p => p.id === pin.id)) {
+            state.homePhotos.push(pin);
+            renderPinCard(pin, grid);
+          }
+        });
+      } catch(e) { /* Firestore not configured yet */ }
+    }
+  } catch(e) {
+    toast('Failed to load feed', 'error');
+  } finally {
+    state.homeLoading = false;
+    spinner.classList.add('hidden');
+  }
+}
+
+// ─── SEARCH ───
+async function doSearch(queryStr, category, reset = true) {
+  if (state.searchLoading) return;
+  state.searchLoading = true;
+  const grid = document.getElementById('search-grid');
+  const spinner = document.getElementById('search-spinner');
+
+  if (reset) {
+    state.searchPage = 1;
+    state.searchPhotos = [];
+    state.searchFullyLoaded = false;
+    renderSkeletons(grid, 8);
+  } else {
+    spinner.classList.remove('hidden');
+  }
+
+  const q = queryStr || category !== 'all' ? (queryStr || category) : 'trending';
+
+  try {
+    const data = await fetchPexelsPhotos(q, state.searchPage, 20);
+    if (reset) grid.innerHTML = '';
+
+    if (!data.photos || data.photos.length === 0) {
+      state.searchFullyLoaded = true;
+      if (reset) grid.innerHTML = `<div class="empty-state" style="column-span:all;"><h3>No results found</h3><p>Try a different search</p></div>`;
+    } else {
+      data.photos.forEach(p => {
+        const pin = pexelsPhotoToPin(p);
+        pin.category = category;
+        state.searchPhotos.push(pin);
+        renderPinCard(pin, grid);
+      });
+      state.searchPage++;
+    }
+  } catch(e) {
+    toast('Search failed', 'error');
+    if (reset) grid.innerHTML = '';
+  } finally {
+    state.searchLoading = false;
+    spinner.classList.add('hidden');
+  }
+}
+
+const debouncedSearch = debounce((q, cat) => doSearch(q, cat, true), 400);
+
+// ─── REELS ───
+async function loadReels() {
+  if (state.reelsLoaded) return;
+  const container = document.getElementById('reels-container');
+  container.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;"><div class="spinner"></div></div>';
+
+  try {
+    const data = await fetchPexelsVideos('nature anime art', 1, 15);
+    container.innerHTML = '';
+
+    if (!data.videos || !data.videos.length) {
+      container.innerHTML = '<div class="empty-state" style="color:#fff;padding-top:40%;"><h3>No reels available</h3></div>';
+      return;
+    }
+
+    data.videos.forEach((v, i) => {
+      const reel = pexelsVideoToReel(v);
+      if (!reel.videoUrl) return;
+      const item = document.createElement('div');
+      item.className = 'reel-item';
+      item.style.height = 'calc(100vh - var(--top-h) - var(--tab-h))';
+      item.innerHTML = `
+        <video class="reel-video" src="${reel.videoUrl}" loop muted playsinline preload="none" poster="${reel.thumbUrl}"></video>
+        <div class="reel-overlay">
+          <div class="reel-info">
+            <h3>${reel.title}</h3>
+            <p>${reel.user || ''}</p>
+          </div>
+        </div>
+        <div class="reel-side-actions">
+          <div class="reel-btn" data-reel-action="like" data-id="${reel.id}">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span>${Math.floor(Math.random() * 9000 + 1000)}</span>
+          </div>
+          <div class="reel-btn" data-reel-action="share" data-url="${reel.videoUrl}" data-title="${reel.title}">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            <span>Share</span>
+          </div>
+          <div class="reel-btn" data-reel-action="save" data-id="${reel.id}">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            <span>Save</span>
+          </div>
+        </div>
+        <div class="reel-play-icon" id="reel-play-${i}">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>`;
+
+      const video = item.querySelector('video');
+      const playIcon = item.querySelector('.reel-play-icon');
+
+      // Toggle play on tap
+      item.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-reel-action]');
+        if (btn) {
+          const action = btn.dataset.reelAction;
+          if (action === 'like') {
+            const id = btn.dataset.id;
+            state.likes[id] = !state.likes[id];
+            localStorage.setItem('ks_likes', JSON.stringify(state.likes));
+            btn.querySelector('svg').style.fill = state.likes[id] ? '#ff3b30' : 'none';
+            btn.querySelector('svg').style.stroke = state.likes[id] ? '#ff3b30' : 'currentColor';
+            toast(state.likes[id] ? 'Liked!' : 'Unliked');
+          } else if (action === 'share') {
+            sharePin(btn.dataset.url, btn.dataset.title);
+          } else if (action === 'save') {
+            const id = btn.dataset.id;
+            state.saves[id] = !state.saves[id];
+            localStorage.setItem('ks_saves', JSON.stringify(state.saves));
+            toast(state.saves[id] ? 'Saved!' : 'Unsaved');
+          }
+          return;
+        }
+        if (video.paused) {
+          video.play().catch(() => {});
+          playIcon.classList.remove('show');
+        } else {
+          video.pause();
+          playIcon.classList.add('show');
+        }
+      });
+
+      container.appendChild(item);
+    });
+
+    state.reelsLoaded = true;
+
+    // IntersectionObserver for autoplay
+    const reelObs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const vid = entry.target.querySelector('video');
+        if (!vid) return;
+        if (entry.isIntersecting) {
+          if (state.autoplay) vid.play().catch(() => {});
+        } else {
+          vid.pause();
+          vid.currentTime = 0;
+        }
+      });
+    }, { threshold: 0.7 });
+
+    container.querySelectorAll('.reel-item').forEach(el => reelObs.observe(el));
+  } catch(e) {
+    container.innerHTML = '<div class="empty-state" style="color:#fff;padding-top:40%;"><h3>Failed to load reels</h3></div>';
+  }
+}
+
+// ─── PIN DETAIL ───
+const pinCache = {};
+
+function openPinDetail(pin) {
+  pinCache[pin.id] = pin;
+  const modal = document.getElementById('pin-detail-modal');
+  const img = document.getElementById('pd-img');
+  const vid = document.getElementById('pd-vid');
+  const title = document.getElementById('pd-title');
+  const desc = document.getElementById('pd-desc');
+
+  title.textContent = pin.title || '';
+  desc.textContent = pin.description || '';
+
+  if (pin.type === 'video' && pin.videoUrl) {
     img.classList.add('hidden');
     vid.classList.remove('hidden');
-    vid.src = pin.url;
+    vid.src = pin.videoUrl;
   } else {
     vid.classList.add('hidden');
     img.classList.remove('hidden');
-    img.src = pin.url;
-    img.onerror = () => { img.src = `https://picsum.photos/seed/${pin.id}/800/500`; };
+    img.src = pin.imageUrl || pin.thumbUrl || '';
+    img.alt = pin.title || '';
   }
 
-  document.getElementById('pin-modal-title').textContent = pin.title;
-  document.getElementById('pin-modal-desc').textContent = pin.desc || '';
+  const likeBtn = document.getElementById('pd-like-btn');
+  const saveBtn = document.getElementById('pd-save-btn');
+  likeBtn.classList.toggle('active-red', !!state.likes[pin.id]);
+  saveBtn.classList.toggle('active-blue', !!state.saves[pin.id]);
 
-  const likes = document.getElementById('pin-modal-likes');
-  likes.textContent = pin.likes || 0;
-
-  const likeBtn = document.getElementById('pin-modal-like-btn');
-  const liked = State.likedPins.includes(pinId);
-  likeBtn.querySelector('svg').setAttribute('fill', liked ? 'var(--red)' : 'none');
-
-  const saveBtn = document.getElementById('pin-modal-save-btn');
-  const saved = State.savedPins.includes(pinId);
-  saveBtn.textContent = saved ? '✓ Saved' : 'Save';
-  saveBtn.className = `btn ${saved ? 'btn-blue' : 'btn-primary'} flex-1`;
-
-  // Author
-  const authorDiv = document.getElementById('pin-modal-author');
-  const initial = (pin.author || 'U')[0].toUpperCase();
-  authorDiv.innerHTML = `
-    <div class="avatar" style="background:${CAT_COLORS[pin.category]||'#888'}20;">${initial}</div>
-    <div><div style="font-weight:600;font-size:14px;">${pin.author||'Unknown'}</div>
-    <div style="font-size:12px;color:var(--text2);">${cap(pin.category||'')}</div></div>`;
-
-  // Tags
-  const tagsDiv = document.getElementById('pin-modal-tags');
-  tagsDiv.innerHTML = (pin.tags||[pin.category]).map(t =>
-    `<span class="badge badge-red">${t}</span>`).join('');
-
+  state.activePinData = pin;
   modal.classList.add('open');
-  document.body.style.overflow = 'hidden';
+  trackView(pin.category);
 }
 
-function closePinModal() {
-  document.getElementById('pin-modal').classList.remove('open');
-  document.body.style.overflow = '';
-  const vid = document.getElementById('pin-modal-video');
+function closePinDetail() {
+  const modal = document.getElementById('pin-detail-modal');
+  modal.classList.remove('open');
+  const vid = document.getElementById('pd-vid');
   vid.pause(); vid.src = '';
+  state.activePinData = null;
 }
 
-async function likePinFromModal() {
-  if (!State.user) { showToast('Login to like'); return; }
-  const pinId = State.currentPinId;
-  const pin = State.pins.find(p => p.id === pinId);
-  if (!pin) return;
+// ─── PIN ACTIONS ───
+async function handlePinAction(action, pin, btn) {
+  if (action === 'like') {
+    state.likes[pin.id] = !state.likes[pin.id];
+    localStorage.setItem('ks_likes', JSON.stringify(state.likes));
+    btn.classList.toggle('liked', state.likes[pin.id]);
+    const svg = btn.querySelector('svg');
+    if (svg) svg.setAttribute('fill', state.likes[pin.id] ? 'currentColor' : 'none');
 
-  const liked = State.likedPins.includes(pinId);
-  const btn = document.getElementById('pin-modal-like-btn');
-  const likesEl = document.getElementById('pin-modal-likes');
-  const svg = btn.querySelector('svg');
-
-  if (liked) {
-    State.likedPins = State.likedPins.filter(id => id !== pinId);
-    pin.likes = Math.max(0, (pin.likes||0) - 1);
-    svg.setAttribute('fill','none');
-  } else {
-    State.likedPins.push(pinId);
-    pin.likes = (pin.likes||0) + 1;
-    svg.setAttribute('fill','var(--red)');
-    svg.classList.add('heart-anim');
-    setTimeout(() => svg.classList.remove('heart-anim'), 400);
-  }
-  likesEl.textContent = pin.likes;
-
-  try {
-    const { db, doc, updateDoc, arrayUnion, arrayRemove, increment } = _fb;
-    await updateDoc(doc(db,'users',State.user.uid), {
-      liked: liked ? arrayRemove(pinId) : arrayUnion(pinId)
-    });
-    if (!pin.id.startsWith('d')) {
-      await updateDoc(doc(db,'pins',pinId), { likes: increment(liked ? -1 : 1) });
+    if (fbReady && db && state.user && !isPexelsUrl(pin.id)) {
+      try {
+        const ref = doc(db, 'users', state.user.uid, 'likes', pin.id);
+        if (state.likes[pin.id]) await setDoc(ref, { pinId: pin.id, timestamp: serverTimestamp() });
+        else await updateDoc(ref, { pinId: null }).catch(() => {});
+      } catch(e) { /* ignore */ }
     }
-  } catch(e) {}
+    toast(state.likes[pin.id] ? '❤ Liked' : 'Unliked');
+  } else if (action === 'save') {
+    state.saves[pin.id] = !state.saves[pin.id];
+    localStorage.setItem('ks_saves', JSON.stringify(state.saves));
+    btn.classList.toggle('saved', state.saves[pin.id]);
+    const svg = btn.querySelector('svg');
+    if (svg) svg.setAttribute('fill', state.saves[pin.id] ? 'currentColor' : 'none');
 
-  renderHomeGrid(State.currentCategory === 'all' ? State.pins : State.pins.filter(p => p.category === State.currentCategory));
+    if (fbReady && db && state.user) {
+      try {
+        const ref = doc(db, 'users', state.user.uid, 'saves', pin.id);
+        if (state.saves[pin.id]) await setDoc(ref, { pinId: pin.id, imageUrl: pin.imageUrl, title: pin.title, timestamp: serverTimestamp() });
+        else await updateDoc(ref, { pinId: null }).catch(() => {});
+      } catch(e) { /* ignore */ }
+    }
+    toast(state.saves[pin.id] ? '🔖 Saved' : 'Unsaved');
+  }
 }
 
-async function savePinFromModal() {
-  if (!State.user) { showToast('Login to save'); return; }
-  const pinId = State.currentPinId;
-  const saved = State.savedPins.includes(pinId);
-  const btn = document.getElementById('pin-modal-save-btn');
+// ─── DOWNLOAD / SHARE ───
+function downloadPin(url) {
+  const a = document.createElement('a');
+  a.href = url; a.download = 'kagescroll_pin';
+  a.target = '_blank';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('Downloading…');
+}
 
-  if (saved) {
-    State.savedPins = State.savedPins.filter(id => id !== pinId);
-    btn.textContent = 'Save';
-    btn.className = 'btn btn-primary flex-1';
-    showToast('Pin unsaved');
-  } else {
-    State.savedPins.push(pinId);
-    btn.textContent = '✓ Saved';
-    btn.className = 'btn btn-blue flex-1';
-    showToast('Pin saved!');
-  }
-
+async function sharePin(url, title) {
   try {
-    const { db, doc, updateDoc, arrayUnion, arrayRemove } = _fb;
-    await updateDoc(doc(db,'users',State.user.uid), {
-      saved: saved ? arrayRemove(pinId) : arrayUnion(pinId)
-    });
-  } catch(e) {}
-
-  updateStats();
-}
-
-/* ═══════════════════════════════════════════════
-   UPLOAD
-═══════════════════════════════════════════════ */
-function switchUploadType(type) {
-  State.uploadType = type;
-  document.querySelectorAll('#page-upload .auth-tab').forEach((el, i) => {
-    el.classList.toggle('active', (i===0 && type==='image') || (i===1 && type==='video'));
-  });
-  const fileInput = document.getElementById('file-input');
-  fileInput.accept = type === 'video' ? 'video/*' : 'image/*';
-  resetUploadPreview();
-}
-
-function handleFileSelect(input) {
-  const file = input.files[0];
-  if (!file) return;
-
-  const maxSize = 20 * 1024 * 1024;
-  if (file.size > maxSize) { showToast('File too large (max 20MB)'); return; }
-
-  State.uploadFile = file;
-  const url = URL.createObjectURL(file);
-
-  if (file.type.startsWith('video')) {
-    document.getElementById('upload-preview').classList.add('hidden');
-    const vid = document.getElementById('upload-video-preview');
-    vid.src = url; vid.classList.remove('hidden');
-    State.uploadType = 'video';
-  } else {
-    document.getElementById('upload-video-preview').classList.add('hidden');
-    const img = document.getElementById('upload-preview');
-    img.src = url; img.classList.remove('hidden');
-    State.uploadType = 'image';
+    if (navigator.share) {
+      await navigator.share({ title: title || 'Check this pin on KageScroll', url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast('Link copied!');
+    }
+  } catch(e) {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast('Link copied!');
+    } catch(_) {
+      toast('Share not supported');
+    }
   }
 }
 
-function resetUploadPreview() {
-  State.uploadFile = null;
-  document.getElementById('upload-preview').classList.add('hidden');
-  document.getElementById('upload-video-preview').classList.add('hidden');
-  document.getElementById('file-input').value = '';
-  document.getElementById('pin-title').value = '';
-  document.getElementById('pin-desc').value = '';
+// ─── UPLOAD ───
+let selectedFile = null;
+
+function setupUpload() {
+  const zone = document.getElementById('upload-zone');
+  const input = document.getElementById('file-input');
+  const previewWrap = document.getElementById('preview-wrap');
+  const previewImg = document.getElementById('preview-img');
+  const previewVid = document.getElementById('preview-vid');
+  const removebtn = document.getElementById('remove-preview-btn');
+
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) handleFileSelect(f);
+  });
+  input.addEventListener('change', () => {
+    if (input.files[0]) handleFileSelect(input.files[0]);
+  });
+  removebtn.addEventListener('click', () => {
+    selectedFile = null;
+    previewImg.src = ''; previewImg.style.display = 'none';
+    previewVid.src = ''; previewVid.style.display = 'none';
+    previewWrap.style.display = 'none';
+    zone.style.display = '';
+    input.value = '';
+  });
+
+  document.getElementById('upload-btn').addEventListener('click', handleUpload);
 }
 
-async function uploadPin() {
-  if (!State.user) { showToast('Login required'); return; }
-  if (!State.uploadFile) { showToast('Choose a file first'); return; }
-  const title = document.getElementById('pin-title').value.trim();
-  if (!title) { showToast('Add a title'); return; }
+function handleFileSelect(file) {
+  const maxSize = 50 * 1024 * 1024;
+  if (file.size > maxSize) { toast('File too large (max 50MB)', 'error'); return; }
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm', 'video/mov'];
+  if (!validTypes.includes(file.type)) { toast('Invalid file type', 'error'); return; }
 
-  const category = document.getElementById('pin-category').value;
+  selectedFile = file;
+  const previewWrap = document.getElementById('preview-wrap');
+  const previewImg = document.getElementById('preview-img');
+  const previewVid = document.getElementById('preview-vid');
+  const zone = document.getElementById('upload-zone');
+
+  const url = URL.createObjectURL(file);
+  if (file.type.startsWith('video/')) {
+    previewImg.style.display = 'none'; previewImg.src = '';
+    previewVid.src = url; previewVid.style.display = 'block';
+  } else {
+    previewVid.style.display = 'none'; previewVid.src = '';
+    previewImg.src = url; previewImg.style.display = 'block';
+  }
+  previewWrap.style.display = 'block';
+  zone.style.display = 'none';
+}
+
+async function handleUpload() {
+  if (!fbReady || !auth) { toast('Configure Firebase first', 'error'); return; }
+  if (!state.user) { openAuthModal(); toast('Please sign in to upload', 'error'); return; }
+  if (!selectedFile) { toast('Select a file first', 'error'); return; }
+
+  const title = document.getElementById('pin-title').value.trim();
   const desc = document.getElementById('pin-desc').value.trim();
+  const category = document.getElementById('pin-category').value;
+
+  if (!title) { toast('Add a title', 'error'); return; }
 
   const btn = document.getElementById('upload-btn');
-  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Uploading…';
+  btn.disabled = true; btn.textContent = 'Uploading…';
 
-  const progressWrap = document.getElementById('upload-progress-wrap');
+  const progressBar = document.getElementById('upload-progress-bar');
   const progressFill = document.getElementById('upload-progress-fill');
-  const progressText = document.getElementById('upload-progress-text');
-  progressWrap.classList.remove('hidden');
+  progressBar.classList.add('visible');
 
   try {
-    const { storage, db, ref, uploadBytesResumable, getDownloadURL, collection, addDoc, serverTimestamp } = _fb;
+    const fileName = `${Date.now()}_${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const result = await supabaseClient.upload(fileName, selectedFile, (pct) => {
+      progressFill.style.width = `${pct}%`;
+    });
 
-    const ext = State.uploadFile.name.split('.').pop();
-    const storageRef = ref(storage, `pins/${State.user.uid}/${Date.now()}.${ext}`);
-    const task = uploadBytesResumable(storageRef, State.uploadFile);
+    if (result.error) throw new Error(result.error);
 
-    task.on('state_changed',
-      snap => {
-        const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
-        progressFill.style.width = pct + '%';
-        progressText.textContent = `Uploading… ${pct}%`;
-      },
-      err => { showToast('Upload failed: ' + err.message); },
-      async () => {
-        const url = await getDownloadURL(task.snapshot.ref);
-        const pinData = {
-          title, desc, category,
-          url, type: State.uploadType,
-          author: State.user.displayName || 'User',
-          authorId: State.user.uid,
-          likes: 0,
-          tags: [category],
-          createdAt: serverTimestamp()
-        };
-        const docRef = await addDoc(collection(db, 'pins'), pinData);
-        State.pins.unshift({ id: docRef.id, ...pinData, createdAt: new Date() });
+    const publicUrl = supabaseClient.getPublicUrl(fileName);
+    const isVideo = selectedFile.type.startsWith('video/');
 
-        showToast('Pin uploaded!');
-        resetUploadPreview();
-        progressWrap.classList.add('hidden');
-        progressFill.style.width = '0%';
-        renderHomeGrid(State.pins);
-        switchTab('home');
-      }
-    );
-  } catch(e) {
-    showToast('Error: ' + e.message.substring(0,50));
-  } finally {
+    const pinData = {
+      title, description: desc, category,
+      imageUrl: isVideo ? '' : publicUrl,
+      videoUrl: isVideo ? publicUrl : '',
+      thumbUrl: isVideo ? '' : publicUrl,
+      type: isVideo ? 'video' : 'image',
+      source: 'user',
+      userId: state.user.uid,
+      userName: state.user.displayName || state.user.email || 'User',
+      createdAt: serverTimestamp(),
+      likes: 0, saves: 0,
+    };
+
+    const docRef = await addDoc(collection(db, 'pins'), pinData);
+    toast('Pin published!', 'success');
+
+    // Reset form
+    selectedFile = null;
+    document.getElementById('pin-title').value = '';
+    document.getElementById('pin-desc').value = '';
+    document.getElementById('remove-preview-btn').click();
+    btn.textContent = 'Publish Pin';
+    progressBar.classList.remove('visible');
+    progressFill.style.width = '0%';
     btn.disabled = false;
-    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/></svg> Upload Pin`;
+
+    // Go to home
+    switchTab('home');
+    await loadHome(true);
+  } catch(e) {
+    toast(`Upload failed: ${e.message || e}`, 'error');
+    btn.disabled = false; btn.textContent = 'Publish Pin';
+    progressBar.classList.remove('visible');
+    progressFill.style.width = '0%';
   }
 }
 
-/* ═══════════════════════════════════════════════
-   REELS
-═══════════════════════════════════════════════ */
-function renderReels() {
-  const container = document.getElementById('reels-container');
-  if (!State.reels.length) {
-    container.innerHTML = `
-      <div class="reels-empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-        <p>No video pins yet</p>
-        <p style="font-size:12px;color:var(--text3)">Upload a video to get started</p>
-      </div>`;
-    return;
-  }
-  container.innerHTML = State.reels.map(reel => `
-    <div class="reel-item" data-id="${reel.id}">
-      <video class="reel-video" src="${reel.url}" loop playsinline muted preload="none"></video>
-      <div class="reel-overlay">
-        <div class="reel-info">
-          <div class="reel-title">${reel.title}</div>
-          <div class="reel-author">@${reel.author||'Unknown'}</div>
-        </div>
-      </div>
-      <div class="reel-actions">
-        <button class="reel-action-btn" onclick="event.stopPropagation();likeReel('${reel.id}',this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-          ${reel.likes||0}
-        </button>
-        <button class="reel-action-btn" onclick="event.stopPropagation();savePinDirect('${reel.id}')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
-          Save
-        </button>
-      </div>
-    </div>`).join('');
+// ─── AUTH ───
+function openAuthModal() {
+  document.getElementById('auth-modal').classList.add('open');
 }
 
-function startReelAutoplay() {
-  const container = document.getElementById('reels-container');
-  if (!container) return;
-
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      const vid = entry.target.querySelector('video');
-      if (!vid) return;
-      if (entry.isIntersecting) {
-        vid.play().catch(()=>{});
-      } else {
-        vid.pause();
-      }
-    });
-  }, { threshold: 0.6 });
-
-  container.querySelectorAll('.reel-item').forEach(item => observer.observe(item));
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('open');
 }
 
-function likeReel(id, btn) {
-  showToast('Liked!');
-  btn.querySelector('svg').setAttribute('fill','var(--red)');
-  btn.classList.add('heart-anim');
-}
-
-function savePinDirect(id) {
-  if (State.savedPins.includes(id)) {
-    showToast('Already saved');
-  } else {
-    State.savedPins.push(id);
-    showToast('Saved!');
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   SEARCH
-═══════════════════════════════════════════════ */
-function handleSearch(val) {
-  const clear = document.getElementById('search-clear');
-  if (clear) clear.style.display = val ? 'flex' : 'none';
-
-  clearTimeout(State.searchTimeout);
-  if (!val.trim()) {
-    document.getElementById('search-results-wrap').classList.add('hidden');
-    document.getElementById('category-browse').style.display = '';
-    return;
-  }
-  State.searchTimeout = setTimeout(() => doSearch(val.trim()), 300);
-}
-
-function doSearch(q) {
-  const lower = q.toLowerCase();
-  const results = State.pins.filter(p =>
-    p.title.toLowerCase().includes(lower) ||
-    (p.desc||'').toLowerCase().includes(lower) ||
-    (p.category||'').toLowerCase().includes(lower) ||
-    (p.tags||[]).some(t => t.toLowerCase().includes(lower)) ||
-    (p.author||'').toLowerCase().includes(lower)
-  );
-
-  document.getElementById('category-browse').style.display = 'none';
-  const wrap = document.getElementById('search-results-wrap');
-  const grid = document.getElementById('search-grid');
-
-  if (!results.length) {
-    grid.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text2);column-span:all;">No results for "${q}"</div>`;
-  } else {
-    grid.innerHTML = results.map(p => pinCardHTML(p)).join('');
-  }
-  wrap.classList.remove('hidden');
-}
-
-function clearSearch() {
-  document.getElementById('search-input').value = '';
-  handleSearch('');
-}
-
-/* ═══════════════════════════════════════════════
-   PROFILE
-═══════════════════════════════════════════════ */
-function updateProfileUI() {
-  if (!State.user) return;
-  const name = State.user.displayName || State.user.email?.split('@')[0] || 'User';
-  const email = State.user.email || State.user.phoneNumber || '';
-
-  document.getElementById('profile-name-display').textContent = name;
-  document.getElementById('profile-email-display').textContent = email;
-  document.getElementById('settings-email-display').textContent = email;
-
-  const avatarText = document.getElementById('profile-avatar-text');
-  const avatarImg = document.getElementById('profile-avatar-img');
-
-  if (State.user.photoURL) {
-    avatarImg.src = State.user.photoURL;
-    avatarImg.style.display = 'block';
-    avatarText.style.display = 'none';
-  } else {
-    avatarText.textContent = name[0].toUpperCase();
-    avatarImg.style.display = 'none';
-    avatarText.style.display = 'block';
-  }
-}
-
-function updateStats() {
-  const myPins = State.pins.filter(p => p.authorId === State.user?.uid);
-  document.getElementById('stat-pins').textContent = myPins.length;
-  document.getElementById('stat-saved').textContent = State.savedPins.length;
-  document.getElementById('stat-likes').textContent = State.likedPins.length;
-}
-
-function switchProfileTab(tab) {
-  State.profileTab = tab;
-  document.querySelectorAll('.profile-tab').forEach((el, i) => {
-    el.classList.toggle('active', (i===0 && tab==='mine') || (i===1 && tab==='saved'));
+function setupAuth() {
+  document.getElementById('auth-close-btn').addEventListener('click', closeAuthModal);
+  document.getElementById('auth-modal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('auth-modal')) closeAuthModal();
   });
-  loadProfilePins();
-}
 
-function loadProfilePins() {
-  updateStats();
-  const grid = document.getElementById('profile-grid');
-  let pins;
-  if (State.profileTab === 'mine') {
-    pins = State.pins.filter(p => p.authorId === State.user?.uid);
-  } else {
-    pins = State.pins.filter(p => State.savedPins.includes(p.id));
-  }
+  // Auth tabs
+  document.querySelectorAll('.auth-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const form = tab.dataset.atab;
+      document.getElementById('auth-email-form').classList.toggle('hidden', form !== 'email');
+      document.getElementById('auth-phone-form').classList.toggle('hidden', form !== 'phone');
+    });
+  });
 
-  if (!pins.length) {
-    grid.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text2);column-span:all;">${State.profileTab==='mine'?'No pins yet. Create your first pin!':'No saved pins yet.'}</div>`;
-    return;
-  }
-  grid.innerHTML = pins.map(p => pinCardHTML(p)).join('');
-}
-
-function changeAvatar() {
-  document.getElementById('avatar-input').click();
-}
-
-async function uploadAvatar(input) {
-  const file = input.files[0];
-  if (!file || !State.user) return;
-  try {
-    const { storage, ref, uploadBytesResumable, getDownloadURL, updateProfile } = _fb;
-    const storageRef = ref(storage, `avatars/${State.user.uid}`);
-    const task = uploadBytesResumable(storageRef, file);
-    showToast('Uploading avatar…');
-    task.on('state_changed', null, e => showToast('Failed: ' + e.message),
-      async () => {
-        const url = await getDownloadURL(task.snapshot.ref);
-        await updateProfile(State.user, { photoURL: url });
-        updateProfileUI();
-        showToast('Avatar updated!');
-      });
-  } catch(e) { showToast('Error: ' + e.message.substring(0,40)); }
-}
-
-/* ═══════════════════════════════════════════════
-   SETTINGS
-═══════════════════════════════════════════════ */
-function openSettings() {
-  document.getElementById('settings-modal').classList.add('open');
-}
-function closeSettings() {
-  document.getElementById('settings-modal').classList.remove('open');
-}
-
-function toggleTheme() {
-  const current = document.body.dataset.theme;
-  const next = current === 'dark' ? 'light' : 'dark';
-  document.body.dataset.theme = next;
-  localStorage.setItem('ks-theme', next);
-  const toggle = document.getElementById('theme-toggle');
-  toggle.classList.toggle('on', next === 'dark');
-}
-
-function toggleNotif(el) {
-  el.classList.toggle('on');
-  if (el.classList.contains('on')) {
-    requestNotifPermission();
-  }
-}
-
-async function requestNotifPermission() {
-  if (!('Notification' in window)) { showToast('Notifications not supported'); return; }
-  const perm = await Notification.requestPermission();
-  if (perm === 'granted') {
-    showToast('Notifications enabled!');
+  // Email auth
+  document.getElementById('auth-email-btn').addEventListener('click', async () => {
+    if (!fbReady) { toast('Firebase not configured', 'error'); return; }
+    const email = document.getElementById('auth-email').value.trim();
+    const pass = document.getElementById('auth-password').value;
+    if (!email || !pass) { toast('Fill in email and password', 'error'); return; }
+    const btn = document.getElementById('auth-email-btn');
+    btn.disabled = true; btn.textContent = 'Signing in…';
     try {
-      const { messaging, getToken } = _fb;
-      if (messaging) {
-        const token = await getToken(messaging, { vapidKey: 'YOUR_VAPID_KEY' });
-        const { db, doc, updateDoc } = _fb;
-        if (State.user) await updateDoc(doc(db,'users',State.user.uid), { fcmToken: token });
+      await signInWithEmailAndPassword(auth, email, pass);
+      closeAuthModal();
+    } catch(e) {
+      if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password') {
+        try {
+          await createUserWithEmailAndPassword(auth, email, pass);
+          closeAuthModal();
+        } catch(e2) {
+          toast(e2.message || 'Auth failed', 'error');
+        }
+      } else {
+        toast(e.message || 'Auth failed', 'error');
       }
-    } catch(e) {}
-  } else {
-    showToast('Permission denied');
-    document.getElementById('notif-toggle').classList.remove('on');
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   AI RECOMMENDATIONS (tag-based)
-═══════════════════════════════════════════════ */
-function getRecommendedPins() {
-  if (!State.viewHistory.length) return State.pins.slice(0,6);
-  const catScores = {};
-  State.viewHistory.slice(0,10).forEach((id, i) => {
-    const p = State.pins.find(x => x.id === id);
-    if (p) catScores[p.category] = (catScores[p.category]||0) + (10-i);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Continue';
+    }
   });
-  return State.pins
-    .filter(p => !State.viewHistory.includes(p.id))
-    .map(p => ({ ...p, score: catScores[p.category]||0 }))
-    .sort((a,b) => b.score - a.score)
-    .slice(0,6);
-}
 
-/* ═══════════════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════════════ */
-function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2800);
-}
+  // Google auth
+  document.getElementById('auth-google-btn').addEventListener('click', async () => {
+    if (!fbReady) { toast('Firebase not configured', 'error'); return; }
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      closeAuthModal();
+    } catch(e) {
+      toast(e.message || 'Google sign-in failed', 'error');
+    }
+  });
 
-function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+  // Phone auth
+  document.getElementById('auth-phone-btn').addEventListener('click', async () => {
+    if (!fbReady) { toast('Firebase not configured', 'error'); return; }
+    const phone = document.getElementById('auth-phone').value.trim();
+    if (!phone) { toast('Enter phone number', 'error'); return; }
+    const btn = document.getElementById('auth-phone-btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      if (!state.recaptchaVerifier) {
+        state.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+      }
+      state.confirmationResult = await signInWithPhoneNumber(auth, phone, state.recaptchaVerifier);
+      document.getElementById('phone-step-1').classList.add('hidden');
+      document.getElementById('phone-step-2').classList.remove('hidden');
+    } catch(e) {
+      toast(e.message || 'Failed to send OTP', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Send OTP';
+    }
+  });
 
-// Drag-over effects on upload drop
-document.addEventListener('DOMContentLoaded', () => {
-  const drop = document.getElementById('upload-drop');
-  if (drop) {
-    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
-    drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
-    drop.addEventListener('drop', e => {
-      e.preventDefault(); drop.classList.remove('drag-over');
-      const file = e.dataTransfer?.files?.[0];
-      if (file) {
-        const fakeInput = { files: [file] };
-        handleFileSelect(fakeInput);
+  document.getElementById('auth-otp-btn').addEventListener('click', async () => {
+    const otp = document.getElementById('auth-otp').value.trim();
+    if (!otp || otp.length !== 6) { toast('Enter 6-digit OTP', 'error'); return; }
+    if (!state.confirmationResult) { toast('Request OTP first', 'error'); return; }
+    const btn = document.getElementById('auth-otp-btn');
+    btn.disabled = true; btn.textContent = 'Verifying…';
+    try {
+      await state.confirmationResult.confirm(otp);
+      closeAuthModal();
+    } catch(e) {
+      toast(e.message || 'Invalid OTP', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Verify OTP';
+    }
+  });
+
+  // Auth state listener
+  if (fbReady && auth) {
+    onAuthStateChanged(auth, async (user) => {
+      state.user = user;
+      updateUserUI(user);
+      if (user && db) {
+        await syncUserData(user);
       }
     });
+  } else {
+    updateUserUI(null);
   }
-});
+}
 
-/* ── Pull-to-refresh on home ── */
-(function() {
-  let startY = 0, pulling = false;
-  const mc = document.getElementById('main-content');
-  if (!mc) return;
-  mc.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
-  mc.addEventListener('touchend', e => {
-    const dy = e.changedTouches[0].clientY - startY;
-    if (dy > 80 && mc.scrollTop <= 0 && State.currentTab === 'home') {
-      showToast('Refreshing…');
-      loadPins();
+function updateUserUI(user) {
+  const avatar = document.getElementById('topbar-avatar');
+  const profileLogged = document.getElementById('profile-logged');
+  const profileAuthRequired = document.getElementById('profile-auth-required');
+  const logoutBtn = document.getElementById('logout-btn');
+  const settingsLoginBtn = document.getElementById('settings-login-btn');
+  const settingsUserInfo = document.getElementById('settings-user-info');
+
+  if (user) {
+    if (user.photoURL) {
+      avatar.src = user.photoURL;
+      avatar.classList.remove('hidden');
+    } else {
+      avatar.classList.add('hidden');
     }
-  }, { passive: true });
-})();
+    profileLogged.style.display = '';
+    profileAuthRequired.style.display = 'none';
 
+    document.getElementById('profile-name').textContent = user.displayName || user.email || 'User';
+    document.getElementById('profile-email').textContent = user.email || user.phoneNumber || '';
+
+    const ph = document.getElementById('profile-avatar-ph');
+    const img = document.getElementById('profile-avatar-img');
+    if (user.photoURL) {
+      img.src = user.photoURL; img.classList.remove('hidden');
+      ph.classList.add('hidden');
+    } else {
+      ph.textContent = (user.displayName || user.email || 'U')[0].toUpperCase();
+      ph.classList.remove('hidden'); img.classList.add('hidden');
+    }
+
+    logoutBtn.style.display = '';
+    settingsLoginBtn.style.display = 'none';
+    settingsUserInfo.style.display = '';
+    document.getElementById('settings-user-name').textContent = user.displayName || 'User';
+    document.getElementById('settings-user-email').textContent = user.email || user.phoneNumber || '';
+  } else {
+    avatar.classList.add('hidden');
+    profileLogged.style.display = 'none';
+    profileAuthRequired.style.display = '';
+    logoutBtn.style.display = 'none';
+    settingsLoginBtn.style.display = '';
+    settingsUserInfo.style.display = 'none';
+  }
+}
+
+async function syncUserData(user) {
+  if (!db || !user) return;
+  try {
+    const userRef = doc(db, 'users', user.uid);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) {
+      await setDoc(userRef, {
+        uid: user.uid,
+        displayName: user.displayName || '',
+        email: user.email || '',
+        photoURL: user.photoURL || '',
+        createdAt: serverTimestamp(),
+      });
+    }
+    // Load counts
+    const pinsSnap = await getDocs(query(collection(db, 'pins'), where('userId', '==', user.uid)));
+    document.getElementById('stat-pins').textContent = pinsSnap.size;
+    const savesSnap = await getDocs(collection(db, 'users', user.uid, 'saves'));
+    document.getElementById('stat-saved').textContent = savesSnap.size;
+    const likesSnap = await getDocs(collection(db, 'users', user.uid, 'likes'));
+    document.getElementById('stat-liked').textContent = likesSnap.size;
+  } catch(e) { /* db not configured yet */ }
+}
+
+// ─── PROFILE ───
+async function loadProfileTab(tab) {
+  state.currentProfileTab = tab;
+  const grid = document.getElementById('profile-grid');
+  grid.innerHTML = '';
+
+  if (!state.user) return;
+
+  renderSkeletons(grid, 6);
+
+  try {
+    if (tab === 'my-pins') {
+      if (!db) { grid.innerHTML = '<div class="empty-state"><h3>Firebase not configured</h3></div>'; return; }
+      const q = query(collection(db, 'pins'), where('userId', '==', state.user.uid), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      grid.innerHTML = '';
+      if (snap.empty) {
+        grid.innerHTML = `<div class="empty-state" style="column-span:all;"><h3>No pins yet</h3><p>Upload your first pin!</p></div>`;
+      } else {
+        snap.forEach(d => renderPinCard({ id: d.id, ...d.data() }, grid));
+      }
+    } else if (tab === 'saved') {
+      const saved = Object.keys(state.saves).filter(k => state.saves[k]);
+      grid.innerHTML = '';
+      if (!saved.length) {
+        grid.innerHTML = `<div class="empty-state" style="column-span:all;"><h3>Nothing saved yet</h3></div>`;
+      } else {
+        // Load from cache
+        saved.forEach(id => {
+          const pin = pinCache[id] || state.homePhotos.find(p => p.id === id) || state.searchPhotos.find(p => p.id === id);
+          if (pin) renderPinCard(pin, grid);
+        });
+        if (!grid.children.length) {
+          grid.innerHTML = `<div class="empty-state" style="column-span:all;"><h3>Nothing saved yet</h3></div>`;
+        }
+      }
+    } else if (tab === 'liked') {
+      const liked = Object.keys(state.likes).filter(k => state.likes[k]);
+      grid.innerHTML = '';
+      if (!liked.length) {
+        grid.innerHTML = `<div class="empty-state" style="column-span:all;"><h3>Nothing liked yet</h3></div>`;
+      } else {
+        liked.forEach(id => {
+          const pin = pinCache[id] || state.homePhotos.find(p => p.id === id) || state.searchPhotos.find(p => p.id === id);
+          if (pin) renderPinCard(pin, grid);
+        });
+        if (!grid.children.length) {
+          grid.innerHTML = `<div class="empty-state" style="column-span:all;"><h3>Nothing liked yet</h3></div>`;
+        }
+      }
+    }
+  } catch(e) {
+    grid.innerHTML = '<div class="empty-state"><h3>Failed to load</h3></div>';
+  }
+}
+
+// ─── NAVIGATION ───
+function switchTab(tab) {
+  const prev = state.currentTab;
+  state.currentTab = tab;
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+
+  document.querySelectorAll('.page').forEach(page => {
+    const pageTab = page.id.replace('page-', '');
+    if (pageTab === tab) {
+      page.style.display = 'block';
+      requestAnimationFrame(() => page.style.opacity = '1');
+    } else {
+      page.style.opacity = '0';
+      setTimeout(() => { if (state.currentTab !== pageTab) page.style.display = 'none'; }, 200);
+    }
+  });
+
+  // Lazy load
+  if (tab === 'reels' && !state.reelsLoaded) loadReels();
+  if (tab === 'profile') {
+    if (state.user) {
+      document.getElementById('profile-logged').style.display = '';
+      document.getElementById('profile-auth-required').style.display = 'none';
+      loadProfileTab(state.currentProfileTab);
+    } else {
+      document.getElementById('profile-logged').style.display = 'none';
+      document.getElementById('profile-auth-required').style.display = '';
+    }
+  }
+  if (tab === 'home' && !state.homePhotos.length) loadHome(true);
+  if (tab === 'search' && !state.searchPhotos.length) doSearch('', 'all', true);
+}
+
+// ─── INFINITE SCROLL ───
+function setupInfiniteScroll() {
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      if (entry.target.id === 'home-load-trigger') {
+        if (!state.homeFullyLoaded) loadHome(false);
+      } else if (entry.target.id === 'search-load-trigger') {
+        if (!state.searchFullyLoaded) {
+          doSearch(state.searchQuery, state.currentCategory, false);
+        }
+      }
+    });
+  }, { threshold: 0.1 });
+
+  const homeTrigger = document.getElementById('home-load-trigger');
+  const searchTrigger = document.getElementById('search-load-trigger');
+  if (homeTrigger) obs.observe(homeTrigger);
+  if (searchTrigger) obs.observe(searchTrigger);
+}
+
+// ─── PUSH NOTIFICATIONS ───
+async function setupNotifications() {
+  if (!messaging || !fbReady) {
+    document.getElementById('notif-status').textContent = 'Not supported';
+    return;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      const token = await getToken(messaging, { vapidKey: '' }).catch(() => null);
+      document.getElementById('notif-toggle').classList.add('on');
+      document.getElementById('notif-status').textContent = 'Enabled';
+      if (db && state.user && token) {
+        await setDoc(doc(db, 'users', state.user.uid), { fcmToken: token }, { merge: true }).catch(() => {});
+      }
+    } else {
+      document.getElementById('notif-status').textContent = 'Permission denied';
+    }
+  } catch(e) {
+    document.getElementById('notif-status').textContent = 'Not available';
+  }
+}
+
+// ─── INIT ───
+function init() {
+  // Theme
+  setTheme();
+
+  // Setup auth
+  setupAuth();
+
+  // Setup upload
+  setupUpload();
+
+  // Setup infinite scroll
+  setupInfiniteScroll();
+
+  // Tab navigation
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      if (tab === 'upload' && !state.user && fbReady) {
+        openAuthModal();
+        return;
+      }
+      switchTab(tab);
+    });
+  });
+
+  // Search
+  const searchInput = document.getElementById('search-input');
+  searchInput.addEventListener('input', () => {
+    state.searchQuery = searchInput.value.trim();
+    debouncedSearch(state.searchQuery, state.currentCategory);
+  });
+
+  // Category chips
+  document.getElementById('category-chips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    state.currentCategory = chip.dataset.cat;
+    doSearch(state.searchQuery, state.currentCategory, true);
+  });
+
+  // Profile tabs
+  document.querySelectorAll('.profile-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      loadProfileTab(tab.dataset.ptab);
+    });
+  });
+
+  // Profile auth required button
+  document.getElementById('profile-signin-btn').addEventListener('click', openAuthModal);
+
+  // Save username
+  document.getElementById('save-username-btn').addEventListener('click', async () => {
+    const val = document.getElementById('edit-username').value.trim();
+    if (!val) { toast('Enter a username', 'error'); return; }
+    if (!state.user) { toast('Sign in first', 'error'); return; }
+    try {
+      if (fbReady && auth) await updateProfile(auth.currentUser, { displayName: val });
+      if (fbReady && db) await setDoc(doc(db, 'users', state.user.uid), { displayName: val }, { merge: true });
+      document.getElementById('profile-name').textContent = val;
+      toast('Username updated!', 'success');
+    } catch(e) {
+      toast('Failed to update', 'error');
+    }
+  });
+
+  // Settings
+  document.getElementById('settings-btn').addEventListener('click', () => {
+    document.getElementById('settings-overlay').classList.add('open');
+  });
+  document.getElementById('settings-overlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('settings-overlay')) {
+      document.getElementById('settings-overlay').classList.remove('open');
+    }
+  });
+
+  // Theme toggle
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    state.darkMode = !state.darkMode;
+    setTheme();
+  });
+
+  // Notifications toggle
+  document.getElementById('notif-toggle').addEventListener('click', async () => {
+    const toggle = document.getElementById('notif-toggle');
+    if (!toggle.classList.contains('on')) {
+      await setupNotifications();
+    } else {
+      toggle.classList.remove('on');
+      document.getElementById('notif-status').textContent = 'Disabled';
+    }
+  });
+
+  // Autoplay toggle
+  document.getElementById('autoplay-toggle').addEventListener('click', () => {
+    const toggle = document.getElementById('autoplay-toggle');
+    toggle.classList.toggle('on');
+    state.autoplay = toggle.classList.contains('on');
+    localStorage.setItem('ks_autoplay', state.autoplay);
+  });
+  document.getElementById('autoplay-toggle').classList.toggle('on', state.autoplay);
+
+  // Logout
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    if (!fbReady || !auth) return;
+    try {
+      await signOut(auth);
+      state.user = null;
+      toast('Signed out');
+      document.getElementById('settings-overlay').classList.remove('open');
+      switchTab('home');
+    } catch(e) {
+      toast('Sign out failed', 'error');
+    }
+  });
+
+  // Settings login btn
+  document.getElementById('settings-login-btn').addEventListener('click', () => {
+    document.getElementById('settings-overlay').classList.remove('open');
+    openAuthModal();
+  });
+
+  // Pin detail
+  document.getElementById('pd-close-btn').addEventListener('click', closePinDetail);
+  document.getElementById('pin-detail-modal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('pin-detail-modal')) closePinDetail();
+  });
+
+  document.getElementById('pd-like-btn').addEventListener('click', () => {
+    if (!state.activePinData) return;
+    if (!state.user && fbReady) { openAuthModal(); return; }
+    state.likes[state.activePinData.id] = !state.likes[state.activePinData.id];
+    localStorage.setItem('ks_likes', JSON.stringify(state.likes));
+    document.getElementById('pd-like-btn').classList.toggle('active-red', !!state.likes[state.activePinData.id]);
+    // Update grid card
+    updateGridCard(state.activePinData.id, 'like');
+    toast(state.likes[state.activePinData.id] ? 'Liked!' : 'Unliked');
+  });
+
+  document.getElementById('pd-save-btn').addEventListener('click', () => {
+    if (!state.activePinData) return;
+    if (!state.user && fbReady) { openAuthModal(); return; }
+    state.saves[state.activePinData.id] = !state.saves[state.activePinData.id];
+    localStorage.setItem('ks_saves', JSON.stringify(state.saves));
+    document.getElementById('pd-save-btn').classList.toggle('active-blue', !!state.saves[state.activePinData.id]);
+    updateGridCard(state.activePinData.id, 'save');
+    toast(state.saves[state.activePinData.id] ? 'Saved!' : 'Unsaved');
+  });
+
+  document.getElementById('pd-download-btn').addEventListener('click', () => {
+    if (!state.activePinData) return;
+    downloadPin(state.activePinData.imageUrl || state.activePinData.videoUrl || '');
+  });
+
+  document.getElementById('pd-share-btn').addEventListener('click', () => {
+    if (!state.activePinData) return;
+    sharePin(state.activePinData.imageUrl || state.activePinData.videoUrl || window.location.href, state.activePinData.title);
+  });
+
+  // Notification btn
+  document.getElementById('notif-btn').addEventListener('click', async () => {
+    await setupNotifications();
+    toast('Notifications set up!');
+  });
+
+  // Topbar avatar → profile
+  document.getElementById('topbar-avatar').addEventListener('click', () => switchTab('profile'));
+
+  // Initial load
+  loadHome(true);
+  doSearch('', 'all', true);
+}
+
+function updateGridCard(pinId, action) {
+  document.querySelectorAll(`[data-pin-id="${pinId}"]`).forEach(card => {
+    const btn = card.querySelector(`[data-action="${action}"]`);
+    if (!btn) return;
+    if (action === 'like') {
+      btn.classList.toggle('liked', !!state.likes[pinId]);
+      const svg = btn.querySelector('svg');
+      if (svg) svg.setAttribute('fill', state.likes[pinId] ? 'currentColor' : 'none');
+    } else if (action === 'save') {
+      btn.classList.toggle('saved', !!state.saves[pinId]);
+      const svg = btn.querySelector('svg');
+      if (svg) svg.setAttribute('fill', state.saves[pinId] ? 'currentColor' : 'none');
+    }
+  });
+}
+
+// Start
+init();
 </script>
 </body>
 </html>
